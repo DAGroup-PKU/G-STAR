@@ -1,0 +1,38 @@
+{
+  "stage": "pretrain",
+  "data": "configs/data/pretrain.json",
+  "roles": "configs/roles.json",
+  "visual_tokenizer": null,
+  "output_dir": "outputs/pretrain",
+  "max_length": 8192,
+  "packing": true,
+  "seed": 42,
+  "head_lr_scale": 10.0,
+  "deepspeed": "configs/deepspeed.json",
+  "evaluation": {
+    "every": 1000,
+    "image_size": 256,
+    "cfg": 1.0,
+    "prompts": ["A red apple on a wooden table."]
+  },
+  "training": {
+    "max_steps": 200000,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.0001,
+    "adam_beta1": 0.9,
+    "adam_beta2": 0.96,
+    "weight_decay": 0.05,
+    "warmup_steps": 1000,
+    "lr_scheduler_type": "cosine_with_min_lr",
+    "lr_scheduler_kwargs": {"min_lr_rate": 0.1},
+    "bf16": true,
+    "gradient_checkpointing": true,
+    "gradient_checkpointing_kwargs": {"use_reentrant": false},
+    "logging_steps": 10,
+    "save_steps": 1000,
+    "save_total_limit": 3,
+    "save_safetensors": false,
+    "report_to": "tensorboard"
+  }
+}

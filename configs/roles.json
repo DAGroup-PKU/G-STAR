@@ -1,0 +1,14 @@
+{
+    "system": 151665,
+    "user_system": 151666,
+    "private": 151647,
+    "user": 151667,
+    "assistant": 151668,
+    "function": 151669,
+    "code": 151670,
+    "ape": 151671,
+    "<function_calling>": 151672,
+    "<calc_start>": 151673,
+    "<calc_end>": 151674,
+    "<inner_think>": 151675
+  }
