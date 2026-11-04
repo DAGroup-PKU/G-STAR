@@ -1,0 +1,20 @@
+// Single source of truth for on-screen captions and the exported .vtt transcript (times in seconds).
+export const CAPTIONS: { start: number; end: number; text: string }[] = [
+  { start: 0.4, end: 3.4, text: 'Discrete autoregressive models paint an image one token at a time.' },
+  { start: 3.6, end: 6.7, text: 'At high resolution, that sequence gets long, and slow.' },
+  { start: 7.4, end: 10.9, text: 'Compress the image harder, and the sequence gets short,' },
+  { start: 11.1, end: 14.6, text: 'but each token now has to carry far more detail.' },
+  { start: 15.4, end: 18.7, text: 'Meet GSTAR: group-scaled token capacity.' },
+  { start: 19.4, end: 22.7, text: 'Each position stores a group of G discrete codes.' },
+  { start: 22.9, end: 26.5, text: 'Double the compression, quadruple the group: the bit budget stays the same.' },
+  { start: 26.7, end: 30.7, text: 'Packing 2×2 turns a 32× tokenizer into an effective 64× one, losslessly.' },
+  { start: 31.4, end: 34.7, text: 'Now every step has to emit many correlated codes.' },
+  { start: 34.9, end: 38.5, text: 'A causal head is slow. A parallel head is fast, but its codes can collide.' },
+  { start: 38.7, end: 42.7, text: 'Our semi-autoregressive head: one parallel pass, then a one-layer causal sweep.' },
+  { start: 43.4, end: 46.9, text: 'Add CUDA Graphs, fused kernels and SGLang serving,' },
+  { start: 47.1, end: 50.7, text: 'and a 1024 × 1024 image takes 2.5 seconds on one H200.' },
+  { start: 51.4, end: 55.3, text: 'That is up to 21× faster than prior discrete autoregressive models,' },
+  { start: 55.5, end: 59.7, text: 'and GSTAR-Pro-8B leads every open model we compare on Qwen-Image-Bench.' },
+  { start: 60.4, end: 65.6, text: 'It edits images too, scoring 7.45 on GEdit-Bench.' },
+  { start: 66.4, end: 72.4, text: 'GSTAR. Short sequences, rich tokens, high-quality images.' },
+];
