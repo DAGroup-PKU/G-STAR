@@ -5,7 +5,7 @@ const SIZE = 600;
 const Wipe: React.FC<{ before: string; after: string; prompt: string; at: number }> = ({ before, after, prompt, at }) => {
   const frame = useCurrentFrame();
   // reveal the edit from left to right, then settle at 55 %
-  const split = interpolate(frame, [at + 20, at + 70, at + 110], [100, 0, 45], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const split = interpolate(frame, [at + 10, at + 45, at + 75], [100, 0, 45], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <Rise at={at}>
       <div style={{ position: 'relative', width: SIZE, height: SIZE, borderRadius: 16, overflow: 'hidden', border: `1px solid ${C.border}` }}>
@@ -30,8 +30,8 @@ export const Editing: React.FC = () => (
       <Rise at={0}><Eyebrow>Image editing · GEdit-Bench overall 7.45</Eyebrow></Rise>
       <Rise at={6}><Headline size={46} style={{ marginTop: 10 }}>Change the instruction, keep the scene</Headline></Rise>
       <div style={{ display: 'flex', gap: 70, marginTop: 34 }}>
-        <Wipe before="edit-watercolor-original.webp" after="edit-watercolor-result.webp" prompt="Turn the photo into a watercolor illustration" at={8} />
-        <Wipe before="edit-blackboard-original.webp" after="edit-blackboard-result.webp" prompt="Replace the heading with the GSTAR title" at={22} />
+        <Wipe before="edit-watercolor-original.webp" after="edit-watercolor-result.webp" prompt="Turn the photo into a watercolor illustration" at={6} />
+        <Wipe before="edit-blackboard-original.webp" after="edit-blackboard-result.webp" prompt="Replace the heading with the GSTAR title" at={14} />
       </div>
     </AbsoluteFill>
   </SceneFade>

@@ -1,9 +1,11 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from 'remotion';
 import { CAPTIONS } from './captions';
 import { Background, C, FONT, prog, useFonts } from './theme';
+import { WhyDiscrete } from './scenes/WhyDiscrete';
 import { Hook } from './scenes/Hook';
 import { Problem } from './scenes/Problem';
 import { Title } from './scenes/Title';
+import { WhyGroup } from './scenes/WhyGroup';
 import { CoScaling } from './scenes/CoScaling';
 import { Heads } from './scenes/Heads';
 import { Speed } from './scenes/Speed';
@@ -16,17 +18,19 @@ const s = (sec: number) => Math.round(sec * FPS);
 
 // [component, start (s), end (s)]
 const SCENES: [React.FC, number, number][] = [
-  [Hook, 0, 7.1],
-  [Problem, 7.1, 15.1],
-  [Title, 15.1, 19.1],
-  [CoScaling, 19.1, 31.1],
-  [Heads, 31.1, 43.1],
-  [Speed, 43.1, 51.1],
-  [Compare, 51.1, 60.1],
-  [Editing, 60.1, 66.1],
-  [Outro, 66.1, 73.5],
+  [WhyDiscrete, 0, 7.5],
+  [Hook, 7.5, 11],
+  [Problem, 11, 15],
+  [Title, 15, 18],
+  [WhyGroup, 18, 24.7],
+  [CoScaling, 24.7, 31],
+  [Heads, 31, 39.5],
+  [Speed, 39.5, 44.5],
+  [Compare, 44.5, 49.5],
+  [Editing, 49.5, 53.5],
+  [Outro, 53.5, 58],
 ];
-export const DURATION = s(73.5);
+export const DURATION = s(58);
 
 const Captions: React.FC = () => {
   const frame = useCurrentFrame();

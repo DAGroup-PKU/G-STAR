@@ -16,9 +16,9 @@ const Stat: React.FC<{ label: string; value: string; sub?: string; tone?: string
 
 export const CoScaling: React.FC = () => {
   const frame = useCurrentFrame();
-  const showOthers = prog(frame, 95, 115);
-  const pack = prog(frame, 125, 200);
-  const morph = prog(frame, 215, 265);
+  const showOthers = prog(frame, 22, 36);
+  const pack = prog(frame, 48, 100);
+  const morph = prog(frame, 112, 150);
   const s = interpolate(morph, [0, 1], [32, 64]);
   const n = 1024 / s;
   const steps = (1024 / s) ** 2;
@@ -27,10 +27,10 @@ export const CoScaling: React.FC = () => {
   // the highlighted cell / 2×2 block on the image
   const cell32 = IMG / 32;
   const bx = 18, by = 11;
-  const blockSize = interpolate(prog(frame, 90, 115), [0, 1], [cell32, cell32 * 2]);
+  const blockSize = interpolate(prog(frame, 22, 36), [0, 1], [cell32, cell32 * 2]);
 
   return (
-    <SceneFade>
+    <SceneFade inF={6}>
       <AbsoluteFill style={{ padding: '70px 120px 0' }}>
         <Rise at={0}><Eyebrow>How it works · spatial–group co-scaling</Eyebrow></Rise>
         <Rise at={6}><Headline size={50} style={{ marginTop: 12 }}>(s, G) → (αs, α²G): <span style={{ color: C.blueSoft }}>fewer steps, same bits</span></Headline></Rise>
@@ -60,11 +60,11 @@ export const CoScaling: React.FC = () => {
                 const end = { x: k * 8 * (SQ + GAP), y: 140 };
                 const x = interpolate(pack, [0, 1], [start.x, end.x]);
                 const y = interpolate(pack, [0, 1], [start.y, end.y]);
-                const o = k === 0 ? prog(frame, 20, 35) : showOthers;
+                const o = k === 0 ? prog(frame, 4, 16) : showOthers;
                 return (
                   <div key={k} style={{ position: 'absolute', left: 24 + x, top: 24 + y, display: 'flex', gap: GAP, opacity: o }}>
                     {Array.from({ length: 8 }, (_, i) => (
-                      <div key={i} style={{ width: SQ, height: SQ, borderRadius: 3, background: col, transform: `scale(${prog(frame, 20 + i * 2 + (k ? 80 : 0), 30 + i * 2 + (k ? 80 : 0))})` }} />
+                      <div key={i} style={{ width: SQ, height: SQ, borderRadius: 3, background: col, transform: `scale(${prog(frame, 4 + i + (k ? 20 : 0), 12 + i + (k ? 20 : 0))})` }} />
                     ))}
                   </div>
                 );

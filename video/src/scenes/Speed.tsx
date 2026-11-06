@@ -12,17 +12,17 @@ const W = 680;
 
 export const Speed: React.FC = () => {
   const frame = useCurrentFrame();
-  const big = prog(frame, 130, 160);
-  const counter = interpolate(prog(frame, 130, 175), [0, 1], [22.23, 2.5]);
+  const big = prog(frame, 60, 80);
+  const counter = interpolate(prog(frame, 60, 95), [0, 1], [22.23, 2.5]);
   return (
-    <SceneFade>
+    <SceneFade outF={8}>
       <AbsoluteFill style={{ padding: '0 120px 150px', justifyContent: 'center' }}>
         <Rise at={0}><Eyebrow>Efficiency · GSTAR-Flash-1.7B · 1024² · 1 × H200</Eyebrow></Rise>
         <Rise at={6}><Headline size={50} style={{ marginTop: 12 }}>From 22.23 s to <span style={{ color: C.blueSoft }}>2.50 s</span> per image</Headline></Rise>
         <div style={{ display: 'flex', gap: 60, marginTop: 56, alignItems: 'center' }}>
           <Card style={{ padding: '40px 40px', display: 'flex', flexDirection: 'column', gap: 34 }}>
             {STAGES.map((s, i) => {
-              const p = prog(frame, 16 + i * 18, 40 + i * 18);
+              const p = prog(frame, 8 + i * 10, 24 + i * 10);
               const last = i === STAGES.length - 1;
               return (
                 <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 22, opacity: 0.25 + 0.75 * p, fontFamily: FONT }}>

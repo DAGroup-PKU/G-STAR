@@ -1,8 +1,8 @@
 # GSTAR 演示视频源码
 
-项目主页里那段约一分钟的 demo（`docs/assets/demo.mp4`）就是用这里的代码渲染出来的。工程用 [Remotion 4](https://www.remotion.dev/)（React 写画面，逐帧渲染成 MP4）。
+项目主页里那段不到一分钟的 demo（`docs/assets/demo.mp4`）就是用这里的代码渲染出来的。工程用 [Remotion 4](https://www.remotion.dev/)（React 写画面，逐帧渲染成 MP4）。
 
-- 1920 × 1080，30 fps，73.5 秒，H.264
+- 1920 × 1080，30 fps，58 秒，H.264
 - 没有配音，字幕直接烧在画面里，另外导出一份 WebVTT 字幕文件
 - 所有数字都来自论文；改数字时，主页 `docs/index.html` 里同一个数也要一起改
 
@@ -57,15 +57,17 @@ video/
 
 | 场景 | 时间 (s) | 内容 | 主要可改的地方 |
 | --- | --- | --- | --- |
-| `Hook` | 0 – 7.1 | 1024² 图（16× tokenizer，64×64 个 token）按光栅顺序一个个显现：序列太长、太慢 | `N`、配图 `gen-lumiere.webp` |
-| `Problem` | 7.1 – 15.1 | 16×（4,096 步）和 64×（256 步）两块面板：压得更狠序列变短，但每个 token 装不下 | `<Panel>` 的参数、配图 `gen-frog.webp` |
-| `Title` | 15.1 – 19.1 | GSTAR 标题和北大、美团 logo | 标题文字 |
-| `CoScaling` | 19.1 – 31.1 | 分组量化，压缩 ×2 时组大小 ×4，2×2 无损打包成等效 64× | `G` 的计算、配图 `gen-panda.webp` |
-| `Heads` | 31.1 – 43.1 | 三种组内预测头的逐步动画（causal / parallel / semi-AR） | `LANES`：延迟和 GenEval（论文 Table 4） |
-| `Speed` | 43.1 – 51.1 | 22.23 s → 2.50 s 的四步加速 | `STAGES`（论文 Figure 5） |
-| `Compare` | 51.1 – 60.1 | 和此前离散 AR 模型的加速比、Qwen-Image-Bench 分数条形图 | `SPEED`、`QIB`（论文 Table 1） |
-| `Editing` | 60.1 – 66.1 | 两组编辑前后对比，分割线扫过一遍后停在中间 | `<Wipe>` 的图片和编辑指令 |
-| `Outro` | 66.1 – 73.5 | 样图墙、标语、logo | `TILES`、标语 |
+| `WhyDiscrete` | 0 – 7.5 | 为什么用离散：Diffusion UMM（如 BAGEL）一张图三份 token、靠去噪学习；离散 NTP 一份 token、每个位置都有 loss（50% vs 100%） | `Strip`、`Coverage` 的参数 |
+| `Hook` | 7.5 – 11 | 离散的代价：1024² 图（16× tokenizer，64×64 个 token）按光栅顺序一个个显现，序列太长、太慢 | `N`、配图 `gen-lumiere.webp` |
+| `Problem` | 11 – 15 | 16×（4,096 步）和 64×（256 步）两块面板：压得更狠序列变短，但每个 token 装不下 | `<Panel>` 的参数、配图 `gen-frog.webp` |
+| `Title` | 15 – 18 | GSTAR 标题和北大、美团 logo | 标题文字 |
+| `WhyGroup` | 18 – 24.7 | 为什么分组量化最自然：Merge → Quantize 只得到 1 个 code，Quantize → Merge 得到一组 code，再扩展到 4 → 8 → 16 组 | `SUB`（子 token 颜色）、各步的帧号 |
+| `CoScaling` | 24.7 – 31 | 压缩 ×2 时组大小 ×4，2×2 无损打包成等效 64× | `G` 的计算、配图 `gen-panda.webp` |
+| `Heads` | 31 – 39.5 | 三种组内预测头的逐步动画（causal / parallel / semi-AR） | `LANES`：延迟和 GenEval（论文 Table 4） |
+| `Speed` | 39.5 – 44.5 | 22.23 s → 2.50 s 的四步加速 | `STAGES`（论文 Figure 5） |
+| `Compare` | 44.5 – 49.5 | 和此前离散 AR 模型的加速比、Qwen-Image-Bench 分数条形图 | `SPEED`、`QIB`（论文 Table 1） |
+| `Editing` | 49.5 – 53.5 | 两组编辑前后对比，分割线扫过一遍后停在中间 | `<Wipe>` 的图片和编辑指令 |
+| `Outro` | 53.5 – 58 | 样图墙、标语、logo | `TILES`、标语 |
 
 ## 常见改法
 

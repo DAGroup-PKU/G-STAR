@@ -20,8 +20,8 @@ const Blk: React.FC<{ t0: number; t1: number; y: number; h: number; color: strin
 export const Heads: React.FC = () => {
   const frame = useCurrentFrame();
   // shared playhead in "head seconds": sweep 0 → 6.44 s over ~6 s of video
-  const now = interpolate(frame, [40, 230], [0, MAX], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const highlight = prog(frame, 240, 270);
+  const now = interpolate(frame, [24, 170], [0, MAX], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const highlight = prog(frame, 180, 205);
 
   return (
     <SceneFade>
@@ -74,7 +74,7 @@ export const Heads: React.FC = () => {
             );
           })}
         </div>
-        <Rise at={60} style={{ marginTop: 18, fontFamily: FONT, fontSize: 18, color: C.dim }}>
+        <Rise at={40} style={{ marginTop: 18, fontFamily: FONT, fontSize: 18, color: C.dim }}>
           Head latency per 512² image, G = 16, matched training (paper Table 4). Timeline split inside Semi-AR is illustrative.
         </Rise>
       </AbsoluteFill>

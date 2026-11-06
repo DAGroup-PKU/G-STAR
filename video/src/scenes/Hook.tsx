@@ -7,10 +7,10 @@ const SIZE = 640;
 export const Hook: React.FC = () => {
   const frame = useCurrentFrame();
   // reveal the image token by token (raster order), accelerating
-  const done = Math.floor(interpolate(frame, [10, 190], [0, N * N], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: t => t * t }));
+  const done = Math.floor(interpolate(frame, [6, 92], [0, N * N], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: t => t * t }));
   const rows = Math.floor(done / N), col = done % N, cell = SIZE / N;
-  const zoom = interpolate(frame, [0, 213], [1.04, 1]);
-  const slow = prog(frame, 105, 130);
+  const zoom = interpolate(frame, [0, 105], [1.04, 1]);
+  const slow = prog(frame, 50, 68);
 
   return (
     <SceneFade inF={8}>
@@ -32,7 +32,7 @@ export const Hook: React.FC = () => {
         <div style={{ flex: 1 }}>
           <Rise at={4}><Eyebrow>Discrete autoregressive generation</Eyebrow></Rise>
           <Rise at={10}><Headline size={70} style={{ marginTop: 18 }}>One token<br />at a time.</Headline></Rise>
-          <Rise at={30} style={{ marginTop: 46 }}>
+          <Rise at={16} style={{ marginTop: 46 }}>
             <div style={{ fontFamily: FONT, fontSize: 22, color: C.muted }}>sequential steps · 1024² · 16× tokenizer</div>
             <div style={{ fontFamily: FONT, fontSize: 92, fontWeight: 800, color: C.blueSoft, fontVariantNumeric: 'tabular-nums', marginTop: 6 }}>
               {fmt(done)}<span style={{ fontSize: 44, color: C.dim, fontWeight: 500 }}> / 4,096</span>

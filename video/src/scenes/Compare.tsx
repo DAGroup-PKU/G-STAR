@@ -22,7 +22,7 @@ const MIN = 40, MAXV = 55, BW = 520;
 export const Compare: React.FC = () => {
   const frame = useCurrentFrame();
   return (
-    <SceneFade>
+    <SceneFade inF={8}>
       <AbsoluteFill style={{ padding: '0 120px 150px', justifyContent: 'center' }}>
         <Rise at={0}><Eyebrow>Speed and quality at 1024²</Eyebrow></Rise>
         <Rise at={6}><Headline size={50} style={{ marginTop: 12 }}>Up to <span style={{ color: C.flash }}>21×</span> faster, without giving up quality</Headline></Rise>
@@ -30,7 +30,7 @@ export const Compare: React.FC = () => {
           <Card style={{ flex: '0 0 640px', padding: '34px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ fontFamily: FONT, fontSize: 22, color: C.muted, marginBottom: 28 }}>Latency speedup vs. prior discrete AR</div>
             {SPEED.map((s, i) => {
-              const p = prog(frame, 14 + i * 14, 50 + i * 14);
+              const p = prog(frame, 8 + i * 8, 34 + i * 8);
               return (
                 <div key={s.vs} style={{ marginBottom: 40, fontFamily: FONT }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 23, color: '#cfd6e4' }}>
@@ -48,8 +48,8 @@ export const Compare: React.FC = () => {
           <Card style={{ flex: 1, padding: '28px 32px' }}>
             <div style={{ fontFamily: FONT, fontSize: 22, color: C.muted, marginBottom: 16 }}>Qwen-Image-Bench overall ↑</div>
             {QIB.map((q, i) => {
-              const p = prog(frame, 60 + i * 7, 95 + i * 7);
-              const glow = q.ours ? prog(frame, 150, 175) : 0;
+              const p = prog(frame, 30 + i * 5, 55 + i * 5);
+              const glow = q.ours ? prog(frame, 95, 115) : 0;
               return (
                 <div key={q.m} style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 17, fontFamily: FONT, opacity: 0.2 + 0.8 * p }}>
                   <div style={{ width: 240, fontSize: 22, color: q.ours ? q.c : '#cfd6e4', fontWeight: q.ours ? 700 : 400 }}>{q.m}{q.tag && <span style={{ fontSize: 15, color: C.dim }}> · {q.tag}</span>}</div>

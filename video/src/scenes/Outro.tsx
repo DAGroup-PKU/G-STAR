@@ -5,8 +5,8 @@ const TILES = ['gen-lumiere', 'gen-taohuayuan', 'gen-egg-tart', 'gen-cinema', 'g
 
 export const Outro: React.FC = () => {
   const frame = useCurrentFrame();
-  const drift = interpolate(frame, [0, 222], [0, -120]);
-  const dim = prog(frame, 40, 80);
+  const drift = interpolate(frame, [0, 135], [0, -80]);
+  const dim = prog(frame, 18, 42);
   return (
     <SceneFade outF={20}>
       <AbsoluteFill style={{ overflow: 'hidden' }}>
@@ -22,11 +22,11 @@ export const Outro: React.FC = () => {
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 110, opacity: dim }}>
           <div style={{ fontFamily: 'Caveat, cursive', fontSize: 200, lineHeight: 1, padding: '0 30px', background: `linear-gradient(90deg, ${C.pro}, #ffffff 45%, #6692f1)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>GSTAR</div>
           <div style={{ fontFamily: FONT, fontSize: 40, color: '#e2e7f0', marginTop: 4 }}>Short sequences. Rich tokens. High-quality images.</div>
-          <Rise at={70} style={{ display: 'flex', gap: 22, marginTop: 40, fontFamily: FONT, fontSize: 26, color: C.muted }}>
+          <Rise at={44} style={{ display: 'flex', gap: 22, marginTop: 40, fontFamily: FONT, fontSize: 26, color: C.muted }}>
             <span>32× &amp; effective 64× tokenizers</span><span>·</span><span>semi-AR head</span><span>·</span><span>2.5 s / 1024² image</span>
           </Rise>
-          <Rise at={84} style={{ marginTop: 34, fontFamily: FONT, fontSize: 30, color: C.blueSoft }}>github.com/DAGroup-PKU/G-STAR</Rise>
-          <Rise at={96} style={{ display: 'flex', gap: 16, marginTop: 30 }}>
+          <Rise at={54} style={{ marginTop: 34, fontFamily: FONT, fontSize: 30, color: C.blueSoft }}>github.com/DAGroup-PKU/G-STAR</Rise>
+          <Rise at={62} style={{ display: 'flex', gap: 16, marginTop: 30 }}>
             {['logo-pku.png', 'logo-meituan.png'].map(f => <Img key={f} src={staticFile(f)} style={{ height: 44, background: '#fff', borderRadius: 10, padding: '8px 16px' }} />)}
           </Rise>
         </AbsoluteFill>
