@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation</title>
+<meta name="description" content="GSTAR co-scales spatial compression and group size so discrete autoregressive models generate 1024×1024 images in 2.5 seconds at 32× and effective 64× compression.">
+<meta name="theme-color" content="#06070a">
+<meta property="og:title" content="GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation">
+<meta property="og:description" content="32× and effective 64× discrete tokenizers + a semi-autoregressive head. 1024² images in 2.5 s on one H200, ~20× faster than prior discrete AR models.">
+<meta property="og:image" content="assets/demo-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/roboto.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="backdrop" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="GSTAR home">GSTAR<span>✦</span></a>
+  <nav aria-label="Sections">
+    <a href="#video">Video</a>
+    <a href="#abstract">Abstract</a>
+    <a href="#method">Method</a>
+    <a href="#results">Results</a>
+    <a href="#efficiency">Efficiency</a>
+    <a href="#editing">Editing</a>
+    <a href="#citation">BibTeX</a>
+  </nav>
+  <a class="gh" href="https://github.com/DAGroup-PKU/G-STAR" target="_blank" rel="noopener" aria-label="GitHub repository">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+  </a>
+</header>
+
+<main id="top">
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <h1>GSTAR</h1>
+  <p class="subtitle">Group-Scaled Token Capacity for<br class="wide"> Deeply Compressed Autoregressive Generation</p>
+
+  <p class="authors">
+    <span>Xu Huang<sup>1,2*</sup></span>
+    <span>Ye Huang<sup>1*</sup></span>
+    <span>Xiaotong Li<sup>2†‡</sup></span>
+    <span>Zhengrong Yue<sup>2,3</sup></span>
+    <span>Jialv Zou<sup>2,4</sup></span>
+    <span>Minhao Jing<sup>2</sup></span><br class="wide">
+    <span>Haodong Li<sup>2,5</sup></span>
+    <span>Wenhao Yan<sup>2,6</sup></span>
+    <span>Yaxin Luo<sup>2,7</sup></span>
+    <span>Duomin Wang</span>
+    <span>Daquan Zhou<sup>1‡</sup></span>
+  </p>
+  <p class="affils">
+    <span><sup>1</sup>Peking University</span>
+    <span><sup>2</sup>Meituan</span>
+    <span><sup>3</sup>Shanghai Jiao Tong University</span>
+    <span><sup>4</sup>Huazhong University of Science and Technology</span>
+    <span><sup>5</sup>The Chinese University of Hong Kong</span>
+    <span><sup>6</sup>Tsinghua University</span>
+    <span><sup>7</sup>MBZUAI</span>
+  </p>
+  <p class="notes"><sup>*</sup>Equal contribution &nbsp;·&nbsp; <sup>†</sup>Project lead &nbsp;·&nbsp; <sup>‡</sup>Corresponding author</p>
+
+  <div class="logos" aria-label="Institutions">
+    <img src="assets/logo-pku.png" alt="Peking University" height="40">
+    <img src="assets/logo-meituan.png" alt="Meituan" height="40">
+  </div>
+
+  <div class="buttons">
+    <span class="btn soon" title="arXiv link will be added at release"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>Paper · arXiv soon</span>
+    <a class="btn" href="https://github.com/DAGroup-PKU/G-STAR" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4 1.5-4-2-6-2.5m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>Code</a>
+    <a class="btn" href="https://huggingface.co/DAGroup-PKU/G-star" target="_blank" rel="noopener">🤗 Models</a>
+    <a class="btn primary" href="#video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>Watch demo</a>
+  </div>
+
+  <p class="tagline">Fewer spatial steps. More capacity per token.<br><strong>High-quality autoregressive images in 2.5 seconds.</strong></p>
+</section>
+
+<!-- ============ GALLERY ============ -->
+<section class="wrap" aria-label="Generated samples">
+  <div class="gallery">
+    <button class="sample tall" data-img="assets/gen-lumiere.webp" data-cap="Portrait with magazine-cover typography."><img src="assets/gen-lumiere.webp" alt="Lumiere magazine cover with a portrait in golden-hour light" width="1024" height="1024"><span>Portrait &amp; typography</span></button>
+    <button class="sample" data-img="assets/gen-taohuayuan.webp" data-cap="Chinese ink landscape with vertical calligraphy."><img src="assets/gen-taohuayuan.webp" alt="Chinese ink landscape with a boat, peach blossoms and calligraphy" width="1024" height="1024"><span>Chinese calligraphy</span></button>
+    <button class="sample" data-img="assets/gen-egg-tart.webp" data-cap="Structured recipe infographic with dense small text."><img src="assets/gen-egg-tart.webp" alt="Illustrated classic egg tart recipe infographic" width="1024" height="1024"><span>Structured layout</span></button>
+    <button class="sample" data-img="assets/gen-sushi.webp" data-cap="Sushi advertisement with serif typography."><img src="assets/gen-sushi.webp" alt="Sushi on a slate plate with chopsticks and a soy-sauce dish, with serif advertising copy" width="1024" height="1024"><span>Advertising</span></button>
+    <button class="sample" data-img="assets/gen-panda.webp" data-cap="Red panda practising calligraphy."><img src="assets/gen-panda.webp" alt="Red panda holding a brush beside calligraphy" width="1024" height="1024"><span>Illustration</span></button>
+    <button class="sample" data-img="assets/gen-art-deco.webp" data-cap="Art-deco portrait in gold and black."><img src="assets/gen-art-deco.webp" alt="Ornate gold-and-black art-deco portrait" width="1024" height="1024"><span>Ornamental detail</span></button>
+    <button class="sample" data-img="assets/gen-frog.webp" data-cap="Photorealistic close-up."><img src="assets/gen-frog.webp" alt="Photorealistic frog" width="1024" height="1024" loading="lazy"><span>Photorealism</span></button>
+    <button class="sample" data-img="assets/gen-window.webp" data-cap="Scene beyond a window."><img src="assets/gen-window.webp" alt="Scenic view through a window" width="1024" height="1024" loading="lazy"><span>Scenes</span></button>
+    <button class="sample" data-img="assets/gen-dog.webp" data-cap="Animal portrait."><img src="assets/gen-dog.webp" alt="Dog portrait" width="1024" height="1024" loading="lazy"><span>Animals</span></button>
+  </div>
+  <p class="caption">Text-to-image samples from GSTAR (paper Figure 1 and supplementary cases). Click to enlarge.</p>
+</section>
+
+<!-- ============ QUALITY VS. LATENCY ============ -->
+<section class="wrap" aria-label="Quality versus latency">
+  <figure class="paper-figure">
+    <img src="assets/fig-benchmark-latency-v2.webp" alt="Paper Figure 1 (c, d): average benchmark score bar chart, and Qwen-Image-Bench score versus latency per image at 1024 × 1024 with speed-up arrows from GSTAR-Flash and GSTAR-Pro to BitDance, Janus-Pro and Emu3.5" width="2734" height="969">
+    <figcaption>(c) Average benchmark score. (d) Quality vs. latency at 1024²: Flash-1.7B takes 2.5 s per image, 21.04× faster than BitDance and 21.57× faster than Janus-Pro; Pro-8B is 8.36× faster than Emu3.5. The latency axis is logarithmic.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ KEY NUMBERS ============ -->
+<section class="wrap metrics" aria-label="Key results">
+  <a href="#efficiency"><span class="k">LATENCY · FLASH-1.7B · 1 × H200</span><strong data-count="2.5" data-dec="1">2.5<small>s</small></strong><p>per 1024 × 1024 image</p></a>
+  <a href="#efficiency"><span class="k">VS. PRIOR DISCRETE AR</span><strong data-count="20" data-dec="0">20<small>×</small></strong><p>faster at 1024²</p></a>
+  <a href="#method"><span class="k">SPATIAL COMPRESSION</span><strong data-count="64" data-dec="0">64<small>×</small></strong><p>effective · lossless 2×2 packing</p></a>
+  <a href="#results"><span class="k">QWEN-IMAGE-BENCH ↑</span><strong data-count="50.07" data-dec="2">50.07</strong><p>GSTAR-Pro-8B · 32×</p></a>
+</section>
+
+<!-- ============ VIDEO ============ -->
+<section class="wrap section" id="video">
+  <p class="eyebrow">DEMO</p>
+  <h2>GSTAR in about a minute</h2>
+  <div class="video-frame">
+    <video controls playsinline preload="metadata" poster="assets/demo-poster.jpg">
+      <source src="assets/demo.mp4" type="video/mp4">
+      Your browser does not support HTML5 video. <a href="assets/demo.mp4">Download the MP4</a>.
+    </video>
+  </div>
+  <p class="caption">Captions are burned in. <a href="assets/demo.mp4" download>Download MP4</a> · <a href="assets/demo.vtt">Transcript (VTT)</a></p>
+</section>
+
+<!-- ============ ABSTRACT ============ -->
+<section class="text-section" id="abstract">
+  <p class="eyebrow">ABSTRACT</p>
+  <h2>Short sequences, rich tokens</h2>
+  <p>Discrete autoregressive models offer a scalable framework for image generation. However, they face a fundamental trade-off: long token sequences preserve representation quality but slow generation, while aggressive spatial compression reduces representation capacity. Based on product quantization, we show that, under a fixed nominal information budget, <strong>group size should scale quadratically with the per-axis spatial compression factor</strong>.</p>
+  <p>Building on this principle, we propose <strong>GSTAR</strong>, a spatial–group co-scaling framework that enables <strong>32× and even effective 64× compression</strong> while preserving strong reconstruction, understanding, and generation performance. Since larger groups introduce intra-group dependencies that must be modeled efficiently, we analyze their impact on inference latency and generation quality and introduce a <strong>semi-autoregressive decoder</strong> that combines parallel feature computation with lightweight causal modeling.</p>
+  <p>With these designs, our highly compressed models perform competitively with leading models across five representative text-to-image benchmarks (GenEval, DPG-Bench, PRISM, LongText-Bench, and Qwen-Image-Bench). At 1024 × 1024 resolution, our model delivers a <strong>20× speedup</strong> over prior discrete autoregressive models, generating each image in <strong>2.5 seconds on a single NVIDIA H200</strong>.</p>
+</section>
+
+<!-- ============ METHOD ============ -->
+<section class="wrap section" id="method">
+  <p class="eyebrow">01 · METHOD</p>
+  <h2>Compress space. Scale capacity.</h2>
+  <p class="lead">Keep the global autoregressive sequence short, and give each remaining position enough discrete codes to describe the image.</p>
+
+  <div class="cards three">
+    <article><span class="num">01</span><h3>Spatial–group co-scaling</h3><p>When per-axis compression grows by α, grow the group size by α². Global steps fall by α² while the nominal bit budget <i>B</i> = (HW/s²)·G·log₂K stays fixed.</p></article>
+    <article><span class="num">02</span><h3>Lossless 2×2 packing</h3><p>Pack each 2×2 neighbourhood of a native 32× tokenizer into one global unit: 4× fewer steps, 4× more codes per step, and no re-quantization. This gives the effective 64× interface.</p></article>
+    <article><span class="num">03</span><h3>Semi-autoregressive head</h3><p>A parallel trunk computes features for all G slots in one pass; a single-layer, KV-cached causal Transformer keeps codes consistent. Near-parallel speed, causal-level quality.</p></article>
+  </div>
+
+  <figure class="paper-figure">
+    <img src="assets/fig-tokenizer.webp" alt="Paper Figure 2: grouped tokenizer with a Qwen-ViT semantic encoder, group-wise quantization, lossless 2×2 packing and the co-scaling equations" loading="lazy" width="2400" height="830">
+    <figcaption>(a) A Qwen-ViT semantic encoder maps the image to a 32× latent grid; group-wise quantization gives each position G codes. Lossless 2×2 packing converts it into an effective 64× interface with 4G codes per step. (b) Co-scaling (s, G) → (αs, α²G) preserves the nominal capacity while shortening the sequence.</figcaption>
+  </figure>
+
+  <!-- interactive co-scaling explorer -->
+  <div class="explorer" id="coscale">
+    <div class="explorer-text">
+      <h3>Try the co-scaling rule</h3>
+      <p>Pick a spatial compression factor for a 1024 × 1024 image. Group size scales with s², so the total number of codes, and the nominal bit budget with K = 16,384, never changes. Only the number of sequential autoregressive steps does.</p>
+      <div class="seg" role="radiogroup" aria-label="Spatial compression">
+        <button role="radio" aria-checked="false" data-s="16">16×</button>
+        <button role="radio" aria-checked="true" data-s="32">32×</button>
+        <button role="radio" aria-checked="false" data-s="64">64×</button>
+      </div>
+      <dl class="stats" aria-live="polite">
+        <div><dt>Global AR steps</dt><dd id="cs-steps">1,024</dd></div>
+        <div><dt>Codes per step (G)</dt><dd id="cs-g">8</dd></div>
+        <div><dt>Total codes</dt><dd>8,192</dd></div>
+        <div><dt>Nominal budget</dt><dd>114,688 bits</dd></div>
+      </dl>
+      <p class="fine">Illustration anchored at f32g8, the tokenizer behind GSTAR-Flash. Nominal capacity is a fixed-length bit count, not a guarantee of fidelity.</p>
+    </div>
+    <div class="explorer-vis">
+      <canvas id="cs-canvas" width="640" height="640" aria-label="Image divided into a grid of global token positions"></canvas>
+      <div class="codes" id="cs-codes" aria-hidden="true"></div>
+      <p class="fine center">One global step emits <b id="cs-g2">8</b> codes</p>
+    </div>
+  </div>
+
+  <h3 class="sub">Parallel computation. Causal consistency.</h3>
+  <p class="lead">Each global step must emit a tuple of G correlated codes. A causal head repeats the full head G times. A parallel head is fast but samples codes independently and can mix incompatible modes. GSTAR runs the heavy trunk once and keeps only a one-layer causal module sequential.</p>
+
+  <figure class="paper-figure">
+    <img src="assets/fig-heads.webp" alt="Paper Figure 3 comparing causal autoregressive, parallel prediction and semi-autoregressive intra-group heads" loading="lazy" width="2400" height="830">
+    <figcaption>Intra-group prediction heads. (a) Causal AR: G sequential full-head passes. (b) Parallel: one pass, but independent marginals can collide. (c) Semi-AR (ours): one parallel pass plus G single-layer causal steps.</figcaption>
+  </figure>
+
+  <div class="explorer heads" id="heads">
+    <div class="explorer-text">
+      <h3>Watch one global step</h3>
+      <p>Timeline of the head for G = 16 codes. Wide blocks are full-head passes; thin blocks are the one-layer causal steps.</p>
+      <div class="seg" role="radiogroup" aria-label="Prediction head">
+        <button role="radio" aria-checked="false" data-h="ar">Causal AR</button>
+        <button role="radio" aria-checked="false" data-h="par">Parallel</button>
+        <button role="radio" aria-checked="true" data-h="sar">Semi-AR (ours)</button>
+      </div>
+      <dl class="stats" aria-live="polite">
+        <div><dt>Head latency / image</dt><dd id="hd-lat">3.41 s</dd></div>
+        <div><dt>GenEval</dt><dd id="hd-ge">0.8253</dd></div>
+        <div><dt>DPG</dt><dd id="hd-dpg">82.60</dd></div>
+        <div><dt>PRISM</dt><dd id="hd-pr">5.46</dd></div>
+      </dl>
+      <p class="fine">Paper Table 4: matched training, Qwen3-1.7B init, 32×, G = 16, latency per image at 512².</p>
+    </div>
+    <div class="explorer-vis">
+      <div class="timeline" id="hd-timeline" aria-hidden="true"></div>
+      <div class="tl-axis"><span>0</span><span>head time →</span></div>
+      <div class="legend"><span><i style="background:#5b9bd5"></i>full head / causal step</span><span><i style="background:#ffa02e"></i>parallel head</span><span><i style="background:#7fcf8f"></i>parallel trunk</span><span><i style="background:#f4d27a"></i>code emitted</span></div>
+      <p class="fine center" id="hd-note">One parallel pass, then lightweight causal steps.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESULTS ============ -->
+<section class="wrap section" id="results">
+  <p class="eyebrow">02 · RESULTS</p>
+  <h2>Two models, one framework</h2>
+  <p class="lead"><b class="pro">GSTAR-Pro-8B</b> uses a 32× tokenizer with G = 16. <b class="flash">GSTAR-Flash-1.7B</b> uses the effective 64× tokenizer with G = 32. Both are trained with PT → CT → SFT and support generation and editing.</p>
+
+  <div class="table-head">
+    <h3>Text-to-image benchmarks</h3>
+    <div class="seg small" role="group" aria-label="Filter models">
+      <button aria-pressed="true" data-filter="all">All</button>
+      <button aria-pressed="false" data-filter="ar">Autoregressive</button>
+      <button aria-pressed="false" data-filter="diff">Diffusion</button>
+    </div>
+  </div>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Text-to-image benchmark table">
+    <table id="t2i">
+      <thead><tr>
+        <th scope="col" data-sort="0">Model</th>
+        <th scope="col">Comp.</th>
+        <th scope="col">Params</th>
+        <th scope="col" data-sort="3">GenEval ↑</th>
+        <th scope="col" data-sort="4">DPG ↑</th>
+        <th scope="col" data-sort="5">PRISM ↑</th>
+        <th scope="col" data-sort="6">LongText ↑</th>
+        <th scope="col" data-sort="7">Qwen-Image ↑</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note">Paper Table 1. Click a score column to sort. PRISM: English overall (Qwen2.5-VL-72B judge), rescaled to 0–10. LongText: English subset. Qwen-Image: Qwen-Image-Bench overall (0–100). “—” = not reported.</p>
+
+  <div class="cards two">
+    <article>
+      <h3>Bigger groups, richer tokens</h3>
+      <p>At 32× with K = 16,384, increasing G steadily improves reconstruction and linear-probe accuracy. Larger groups converge more slowly at first, but G = 16 overtakes G = 8 on ImageNet from 25k steps and matches or beats it on text-to-image.</p>
+      <div class="table-scroll mini"><table>
+        <thead><tr><th>G</th><th>rFID ↓</th><th>gFID ↓ (50k)</th><th>Linear probe ↑</th></tr></thead>
+        <tbody>
+          <tr><th>1</th><td>2.06</td><td>2.11</td><td>81.45</td></tr>
+          <tr><th>8</th><td>0.85</td><td>6.38</td><td>82.90</td></tr>
+          <tr class="hl"><th>16</th><td>0.54</td><td>5.74</td><td>84.15</td></tr>
+          <tr><th>32</th><td><b>0.43</b></td><td>17.05</td><td><b>84.55</b></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Paper Table 2 · ImageNet 256², LlamaGen Llama-XL generator.</p>
+    </article>
+    <article>
+      <figure class="paper-figure tight">
+        <img src="assets/fig-group-scaling.webp" alt="ImageNet gFID over training steps: G=16 starts higher but drops below G=8 at 25k steps" loading="lazy" width="1223" height="856">
+      </figure>
+      <p class="note">Paper Figure 4 · ImageNet gFID during training.</p>
+    </article>
+  </div>
+
+  <div class="cards three">
+    <article>
+      <h3>Reconstruction at 32× and 64×</h3>
+      <div class="table-scroll mini"><table>
+        <thead><tr><th>Tokenizer</th><th>Comp.</th><th>PSNR ↑</th></tr></thead>
+        <tbody>
+          <tr><th>VQGAN</th><td>16×</td><td>22.24</td></tr>
+          <tr><th>IBQ</th><td>16×</td><td>23.39</td></tr>
+          <tr><th>VAR</th><td>16×</td><td>23.43</td></tr>
+          <tr><th>Emu3.5</th><td>16×</td><td>23.82</td></tr>
+          <tr><th>Open-MAGVIT2</th><td>16×</td><td>23.98</td></tr>
+          <tr class="hl"><th>GSTAR f32g16</th><td>32×</td><td><b>25.12</b></td></tr>
+          <tr class="hl"><th>GSTAR f64g32</th><td>64×</td><td>23.90</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">ImageNet val, 512² (paper Table 9).</p>
+    </article>
+    <article>
+      <h3>Discrete tokens still understand</h3>
+      <p>A Qwen3-1.7B LLaVA-OneVision model fed the discrete f32g16 tokens matches continuous Qwen-ViT features across eight understanding benchmarks.</p>
+      <div class="bigpair">
+        <div><strong>64.6</strong><span>continuous</span></div>
+        <div class="win"><strong>64.7</strong><span>discrete f32g16</span></div>
+      </div>
+      <p class="note">Average of MathVista, RealWorldQA, MMStar, OCRBench, TextVQA, AI2D, ChartQA, DocVQA (paper Table 7).</p>
+    </article>
+    <article>
+      <h3>Packing to 64× is lossless</h3>
+      <p>Repacking f32g8 into f64g32 leaves reconstruction identical by construction, with a 4× shorter sequence and only a small change in generation quality.</p>
+      <div class="table-scroll mini"><table>
+        <thead><tr><th>Setting</th><th>GenEval</th><th>DPG</th><th>PRISM</th></tr></thead>
+        <tbody>
+          <tr><th>f32g8</th><td>0.806</td><td>82.49</td><td>5.30</td></tr>
+          <tr class="hl"><th>f64g32</th><td>0.789</td><td>80.44</td><td>5.13</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Paper Table 8.</p>
+    </article>
+  </div>
+
+  <figure class="paper-figure">
+    <img src="assets/fig-reconstruction.webp" alt="Reconstruction examples: ground truth, f32g16 ViT decoder and refiner, f64g32 ViT decoder and refiner, on a phone booth, sticky notes with English and Chinese text, and a portrait" loading="lazy" width="2400" height="1521">
+    <figcaption>Reconstructions at 1024². Left to right: ground truth, f32g16 ViT decoder, f32g16 refiner, f64g32 ViT decoder, f64g32 refiner. Text and faces survive even at 64×.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ EFFICIENCY ============ -->
+<section class="wrap section" id="efficiency">
+  <p class="eyebrow">03 · EFFICIENCY</p>
+  <h2>From 22.23 s to 2.50 s</h2>
+  <p class="lead">Shorter global sequences and a faster head cut the cost of the model itself; system work does the rest. Four cumulative optimizations compound to an <b>8.9×</b> end-to-end speedup for GSTAR-Flash-1.7B at 1024².</p>
+  <div class="speed" id="speed" role="img" aria-label="Latency: causal head baseline 22.23 s; semi-AR head 14.93 s; plus CUDA Graph 5.85 s; plus kernel fusion 3.37 s; plus SGLang serving 2.50 s">
+    <div class="row"><span class="lbl">Causal-head baseline</span><span class="bar"><i style="--w:100%"></i></span><b>22.23 s</b><em></em></div>
+    <div class="row"><span class="lbl">Semi-AR head</span><span class="bar"><i style="--w:67.16%"></i></span><b>14.93 s</b><em>1.49×</em></div>
+    <div class="row"><span class="lbl">+ CUDA Graph</span><span class="bar"><i style="--w:26.32%"></i></span><b>5.85 s</b><em>2.55×</em></div>
+    <div class="row"><span class="lbl">+ Fused Triton kernels</span><span class="bar"><i style="--w:15.16%"></i></span><b>3.37 s</b><em>1.74×</em></div>
+    <div class="row best"><span class="lbl">+ SGLang serving</span><span class="bar"><i style="--w:11.25%"></i></span><b>2.50 s</b><em>1.35×</em></div>
+  </div>
+  <p class="note">Paper Figure 5. Batch 1, 1024², one NVIDIA H200, BF16, CFG 1.8, temperature 0.5, top-k 1024; median of 3 timed runs after 3 warm-ups.</p>
+</section>
+
+<!-- ============ EDITING ============ -->
+<section class="wrap section" id="editing">
+  <p class="eyebrow">04 · IMAGE EDITING</p>
+  <h2>Change the instruction, keep the scene</h2>
+  <p class="lead">GSTAR-Pro-8B also edits images from text instructions, reaching <b>7.45</b> overall on GEdit-Bench (English), close to GPT-Image-1 (7.53) and Qwen-Image-Edit (7.56). Drag across each image to compare.</p>
+  <div class="cards two edits">
+    <article>
+      <div class="compare" style="--split:50%">
+        <img src="assets/edit-watercolor-result.webp" alt="Edited: watercolor version of the portrait" loading="lazy" width="1024" height="1024">
+        <img class="before" src="assets/edit-watercolor-original.webp" alt="Original: photo of a woman in a red dress and rabbit-ear hat" loading="lazy" width="1024" height="1024">
+        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
+        <input type="range" min="0" max="100" value="50" aria-label="Compare original and watercolor edit">
+      </div>
+      <h3>Style transfer</h3><p>Render the photo as a watercolor illustration, keeping the dress, hat, hair and room.</p>
+    </article>
+    <article>
+      <div class="compare" style="--split:50%">
+        <img src="assets/edit-blackboard-result.webp" alt="Edited: blackboard heading replaced with the GSTAR paper title" loading="lazy" width="1024" height="1024">
+        <img class="before" src="assets/edit-blackboard-original.webp" alt="Original: blackboard with a creative-thinking heading" loading="lazy" width="1024" height="1024">
+        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
+        <input type="range" min="0" max="100" value="50" aria-label="Compare original and blackboard text edit">
+      </div>
+      <h3>Text replacement</h3><p>Swap the blackboard heading for the GSTAR title while keeping chalk style and layout.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ CITATION ============ -->
+<section class="wrap section" id="citation">
+  <p class="eyebrow">CITATION</p>
+  <h2>BibTeX</h2>
+  <div class="bib">
+    <button id="copy-bib" type="button">Copy</button>
+<pre><code id="bibtex">@article{huang2026gstar,
+  title   = {GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation},
+  author  = {Huang, Xu and Huang, Ye and Li, Xiaotong and Yue, Zhengrong and Zou, Jialv and
+             Jing, Minhao and Li, Haodong and Yan, Wenhao and Luo, Yaxin and Wang, Duomin and Zhou, Daquan},
+  journal = {arXiv preprint},
+  year    = {2026}
+}</code></pre>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>GSTAR · Peking University &amp; Meituan</p>
+  <p class="fine">Page layout shared with <a href="https://github.com/DAGroup-PKU/DCSAE">DC-SAE</a>. All numbers are from the paper.</p>
+</footer>
+
+<dialog id="lightbox" aria-label="Image viewer">
+  <button id="lb-close" aria-label="Close">×</button>
+  <img src="" alt="">
+  <p></p>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

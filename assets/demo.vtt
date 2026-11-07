@@ -1,0 +1,69 @@
+WEBVTT
+
+1
+00:00:00.400 --> 00:00:03.400
+Discrete autoregressive models paint an image one token at a time.
+
+2
+00:00:03.600 --> 00:00:06.700
+At high resolution, that sequence gets long, and slow.
+
+3
+00:00:07.400 --> 00:00:10.900
+Compress the image harder, and the sequence gets short,
+
+4
+00:00:11.100 --> 00:00:14.600
+but each token now has to carry far more detail.
+
+5
+00:00:15.400 --> 00:00:18.700
+Meet GSTAR: group-scaled token capacity.
+
+6
+00:00:19.400 --> 00:00:22.700
+Each position stores a group of G discrete codes.
+
+7
+00:00:22.900 --> 00:00:26.500
+Double the compression, quadruple the group: the bit budget stays the same.
+
+8
+00:00:26.700 --> 00:00:30.700
+Packing 2×2 turns a 32× tokenizer into an effective 64× one, losslessly.
+
+9
+00:00:31.400 --> 00:00:34.700
+Now every step has to emit many correlated codes.
+
+10
+00:00:34.900 --> 00:00:38.500
+A causal head is slow. A parallel head is fast, but its codes can collide.
+
+11
+00:00:38.700 --> 00:00:42.700
+Our semi-autoregressive head: one parallel pass, then a one-layer causal sweep.
+
+12
+00:00:43.400 --> 00:00:46.900
+Add CUDA Graphs, fused kernels and SGLang serving,
+
+13
+00:00:47.100 --> 00:00:50.700
+and a 1024 × 1024 image takes 2.5 seconds on one H200.
+
+14
+00:00:51.400 --> 00:00:55.300
+That is up to 21× faster than prior discrete autoregressive models,
+
+15
+00:00:55.500 --> 00:00:59.700
+and GSTAR-Pro-8B leads every open model we compare on Qwen-Image-Bench.
+
+16
+00:01:00.400 --> 00:01:05.600
+It edits images too, scoring 7.45 on GEdit-Bench.
+
+17
+00:01:06.400 --> 00:01:12.400
+GSTAR. Short sequences, rich tokens, high-quality images.
