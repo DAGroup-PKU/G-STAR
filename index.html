@@ -20,12 +20,12 @@
 <header class="topbar">
   <a class="brand" href="#top" aria-label="GSTAR home">GSTAR<span>✦</span></a>
   <nav aria-label="Sections">
+    <a href="#editing">Editing</a>
     <a href="#video">Video</a>
     <a href="#abstract">Abstract</a>
     <a href="#method">Method</a>
     <a href="#results">Results</a>
     <a href="#efficiency">Efficiency</a>
-    <a href="#editing">Editing</a>
     <a href="#citation">BibTeX</a>
   </nav>
   <a class="gh" href="https://github.com/DAGroup-PKU/G-STAR" target="_blank" rel="noopener" aria-label="GitHub repository">
@@ -101,6 +101,33 @@
     <a href="assets/fig-benchmark-latency-v3.webp" target="_blank" rel="noopener"><img src="assets/fig-benchmark-latency-v3.webp" alt="Paper Figure 1 (c, d): average benchmark score bar chart, and Qwen-Image-Bench score versus latency per image at 1024 × 1024 with speed-up arrows, plus a speed-up panel: GSTAR-Flash-1.7B 21.57× vs. Janus-Pro-7B and 21.04× vs. BitDance-14B, GSTAR-Pro-8B 8.36× vs. Emu3.5-34B" width="3223" height="969"></a>
     <figcaption>(c) Average benchmark score. (d) Quality vs. latency at 1024²: Flash-1.7B takes 2.5 s per image, 21.04× faster than BitDance and 21.57× faster than Janus-Pro; Pro-8B is 8.36× faster than Emu3.5. The latency axis is logarithmic.</figcaption>
   </figure>
+</section>
+
+<!-- ============ EDITING ============ -->
+<section class="wrap section" id="editing">
+  <p class="eyebrow">IMAGE EDITING</p>
+  <h2>Change the instruction, keep the scene</h2>
+  <p class="lead">GSTAR-Pro-8B also edits images from text instructions, reaching <b>7.45</b> overall on GEdit-Bench (English), close to GPT-Image-1 (7.53) and Qwen-Image-Edit (7.56). Drag across each image to compare.</p>
+  <div class="cards two edits">
+    <article>
+      <div class="compare" style="--split:50%">
+        <img src="assets/edit-watercolor-result.webp" alt="Edited: watercolor version of the portrait" loading="lazy" width="1024" height="1024">
+        <img class="before" src="assets/edit-watercolor-original.webp" alt="Original: photo of a woman in a red dress and rabbit-ear hat" loading="lazy" width="1024" height="1024">
+        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
+        <input type="range" min="0" max="100" value="50" aria-label="Compare original and watercolor edit">
+      </div>
+      <h3>Style transfer</h3><p>Render the photo as a watercolor illustration, keeping the dress, hat, hair and room.</p>
+    </article>
+    <article>
+      <div class="compare" style="--split:50%">
+        <img src="assets/edit-blackboard-result.webp" alt="Edited: blackboard heading replaced with the GSTAR paper title" loading="lazy" width="1024" height="1024">
+        <img class="before" src="assets/edit-blackboard-original.webp" alt="Original: blackboard with a creative-thinking heading" loading="lazy" width="1024" height="1024">
+        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
+        <input type="range" min="0" max="100" value="50" aria-label="Compare original and blackboard text edit">
+      </div>
+      <h3>Text replacement</h3><p>Swap the blackboard heading for the GSTAR title while keeping chalk style and layout.</p>
+    </article>
+  </div>
 </section>
 
 <!-- ============ KEY NUMBERS ============ -->
@@ -322,33 +349,6 @@
     <div class="row best"><span class="lbl">+ SGLang serving</span><span class="bar"><i style="--w:11.25%"></i></span><b>2.50 s</b><em>1.35×</em></div>
   </div>
   <p class="note">Paper Figure 5. Batch 1, 1024², one NVIDIA H200, BF16, CFG 1.8, temperature 0.5, top-k 1024; median of 3 timed runs after 3 warm-ups.</p>
-</section>
-
-<!-- ============ EDITING ============ -->
-<section class="wrap section" id="editing">
-  <p class="eyebrow">04 · IMAGE EDITING</p>
-  <h2>Change the instruction, keep the scene</h2>
-  <p class="lead">GSTAR-Pro-8B also edits images from text instructions, reaching <b>7.45</b> overall on GEdit-Bench (English), close to GPT-Image-1 (7.53) and Qwen-Image-Edit (7.56). Drag across each image to compare.</p>
-  <div class="cards two edits">
-    <article>
-      <div class="compare" style="--split:50%">
-        <img src="assets/edit-watercolor-result.webp" alt="Edited: watercolor version of the portrait" loading="lazy" width="1024" height="1024">
-        <img class="before" src="assets/edit-watercolor-original.webp" alt="Original: photo of a woman in a red dress and rabbit-ear hat" loading="lazy" width="1024" height="1024">
-        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
-        <input type="range" min="0" max="100" value="50" aria-label="Compare original and watercolor edit">
-      </div>
-      <h3>Style transfer</h3><p>Render the photo as a watercolor illustration, keeping the dress, hat, hair and room.</p>
-    </article>
-    <article>
-      <div class="compare" style="--split:50%">
-        <img src="assets/edit-blackboard-result.webp" alt="Edited: blackboard heading replaced with the GSTAR paper title" loading="lazy" width="1024" height="1024">
-        <img class="before" src="assets/edit-blackboard-original.webp" alt="Original: blackboard with a creative-thinking heading" loading="lazy" width="1024" height="1024">
-        <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
-        <input type="range" min="0" max="100" value="50" aria-label="Compare original and blackboard text edit">
-      </div>
-      <h3>Text replacement</h3><p>Swap the blackboard heading for the GSTAR title while keeping chalk style and layout.</p>
-    </article>
-  </div>
 </section>
 
 <!-- ============ CITATION ============ -->

@@ -96,7 +96,7 @@ function segmented(container, attr, onChange) {
   const canvas = $('#cs-canvas');
   const ctx = canvas.getContext('2d');
   const img = new Image();
-  img.src = 'assets/gen-frog.webp';
+  img.src = 'assets/gen-panda.webp';
   const CODE_COLORS = ['#f4d27a', '#bfe3b4', '#5b9bd5'];   // yellow / green / blue, as in paper Fig. 2
   let s = 32, cursor = 0, timer = null;
 
