@@ -13,7 +13,7 @@ export const Title: React.FC = () => {
         }}>GSTAR</div>
         <Rise at={18}><div style={{ fontFamily: FONT, fontSize: 40, color: '#cfd6e4', textAlign: 'center', marginTop: 8 }}>Group-Scaled Token Capacity for<br />Deeply Compressed Autoregressive Generation</div></Rise>
         <Rise at={36} style={{ display: 'flex', gap: 18, marginTop: 44 }}>
-          {['logo-pku.png', 'logo-meituan.png'].map(f => (
+          {['logo-dagroup.png', 'logo-longcat.png'].map(f => (
             <Img key={f} src={staticFile(f)} style={{ height: 52, background: '#fff', borderRadius: 12, padding: '9px 18px' }} />
           ))}
         </Rise>

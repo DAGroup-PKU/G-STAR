@@ -60,7 +60,7 @@ video/
 | `WhyDiscrete` | 0 – 7.5 | 为什么用离散：Diffusion UMM（如 BAGEL）一张图三份 token、靠去噪学习；离散 NTP 一份 token、每个位置都有 loss（50% vs 100%） | `Strip`、`Coverage` 的参数 |
 | `Hook` | 7.5 – 11 | 离散的代价：1024² 图（16× tokenizer，64×64 个 token）按光栅顺序一个个显现，序列太长、太慢 | `N`、配图 `gen-lumiere.webp` |
 | `Problem` | 11 – 15 | 16×（4,096 步）和 64×（256 步）两块面板：压得更狠序列变短，但每个 token 装不下 | `<Panel>` 的参数、配图 `gen-frog.webp` |
-| `Title` | 15 – 18 | GSTAR 标题和北大、美团 logo | 标题文字 |
+| `Title` | 15 – 18 | GSTAR 标题和 DAGroup、LongCat logo | 标题文字 |
 | `WhyGroup` | 18 – 24.7 | 为什么分组量化最自然：Merge → Quantize 只得到 1 个 code，Quantize → Merge 得到一组 code，再扩展到 4 → 8 → 16 组 | `SUB`（子 token 颜色）、各步的帧号 |
 | `CoScaling` | 24.7 – 31 | 压缩 ×2 时组大小 ×4，2×2 无损打包成等效 64× | `G` 的计算、配图 `gen-panda.webp` |
 | `Heads` | 31 – 39.5 | 三种组内预测头的逐步动画（causal / parallel / semi-AR） | `LANES`：延迟和 GenEval（论文 Table 4） |

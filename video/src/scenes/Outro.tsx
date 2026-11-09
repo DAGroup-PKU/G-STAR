@@ -27,7 +27,7 @@ export const Outro: React.FC = () => {
           </Rise>
           <Rise at={54} style={{ marginTop: 34, fontFamily: FONT, fontSize: 30, color: C.blueSoft }}>github.com/DAGroup-PKU/G-STAR</Rise>
           <Rise at={62} style={{ display: 'flex', gap: 16, marginTop: 30 }}>
-            {['logo-pku.png', 'logo-meituan.png'].map(f => <Img key={f} src={staticFile(f)} style={{ height: 44, background: '#fff', borderRadius: 10, padding: '8px 16px' }} />)}
+            {['logo-dagroup.png', 'logo-longcat.png'].map(f => <Img key={f} src={staticFile(f)} style={{ height: 44, background: '#fff', borderRadius: 10, padding: '8px 16px' }} />)}
           </Rise>
         </AbsoluteFill>
       </AbsoluteFill>
