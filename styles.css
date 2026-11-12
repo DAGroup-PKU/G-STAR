@@ -1,4 +1,4 @@
-/* GSTAR project page — dark theme shared with the DC-SAE page. */
+/* G-STAR project page — dark theme shared with the DC-SAE page. */
 @font-face{font-family:Roboto;src:url('fonts/roboto.woff2') format('woff2');font-weight:300 800;font-display:swap}
 @font-face{font-family:Caveat;src:url('fonts/Caveat-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
 
@@ -12,8 +12,8 @@
   --card-border:rgba(255,255,255,.13);
   --blue:#6cb6ff;
   --blue-strong:#2f6df6;
-  --pro:#f0565b;     /* GSTAR-Pro (32x) — red in the paper figures */
-  --flash:#ffa02e;   /* GSTAR-Flash (64x) — orange in the paper figures */
+  --pro:#f0565b;     /* G-STAR-Pro (32x) — red in the paper figures */
+  --flash:#ffa02e;   /* G-STAR-Flash (64x) — orange in the paper figures */
   --radius:16px;
 }
 *{box-sizing:border-box}

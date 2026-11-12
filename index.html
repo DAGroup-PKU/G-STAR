@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation</title>
-<meta name="description" content="GSTAR co-scales spatial compression and group size so discrete autoregressive models generate 1024×1024 images in 2.5 seconds at 32× and effective 64× compression.">
+<title>G-STAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation</title>
+<meta name="description" content="G-STAR co-scales spatial compression and group size so discrete autoregressive models generate 1024×1024 images in 2.5 seconds at 32× and effective 64× compression.">
 <meta name="theme-color" content="#06070a">
-<meta property="og:title" content="GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation">
+<meta property="og:title" content="G-STAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation">
 <meta property="og:description" content="32× and effective 64× discrete tokenizers + a semi-autoregressive head. 1024² images in 2.5 s on one H200, ~20× faster than prior discrete AR models.">
 <meta property="og:image" content="assets/demo-poster.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -18,7 +18,7 @@
 <div id="backdrop" aria-hidden="true"></div>
 
 <header class="topbar">
-  <a class="brand" href="#top" aria-label="GSTAR home">GSTAR<span>✦</span></a>
+  <a class="brand" href="#top" aria-label="G-STAR home">G-STAR<span>✦</span></a>
   <nav aria-label="Sections">
     <a href="#editing">Editing</a>
     <a href="#video">Video</a>
@@ -37,7 +37,7 @@
 
 <!-- ============ HERO ============ -->
 <section class="hero">
-  <h1>GSTAR</h1>
+  <h1>G-STAR</h1>
   <p class="subtitle">Group-Scaled Token Capacity for<br class="wide"> Deeply Compressed Autoregressive Generation</p>
 
   <p class="authors">
@@ -92,13 +92,13 @@
     <button class="sample" data-img="assets/gen-window.webp" data-cap="Scene beyond a window."><img src="assets/gen-window.webp" alt="Scenic view through a window" width="1024" height="1024" loading="lazy"><span>Scenes</span></button>
     <button class="sample" data-img="assets/gen-dog.webp" data-cap="Animal portrait."><img src="assets/gen-dog.webp" alt="Dog portrait" width="1024" height="1024" loading="lazy"><span>Animals</span></button>
   </div>
-  <p class="caption">Text-to-image samples from GSTAR (paper Figure 1 and supplementary cases). Click to enlarge.</p>
+  <p class="caption">Text-to-image samples from G-STAR (paper Figure 1 and supplementary cases). Click to enlarge.</p>
 </section>
 
 <!-- ============ QUALITY VS. LATENCY ============ -->
 <section class="wrap" aria-label="Quality versus latency">
   <figure class="paper-figure">
-    <a href="assets/fig-benchmark-latency-v3.webp" target="_blank" rel="noopener"><img src="assets/fig-benchmark-latency-v3.webp" alt="Paper Figure 1 (c, d): average benchmark score bar chart, and Qwen-Image-Bench score versus latency per image at 1024 × 1024 with speed-up arrows, plus a speed-up panel: GSTAR-Flash-1.7B 21.57× vs. Janus-Pro-7B and 21.04× vs. BitDance-14B, GSTAR-Pro-8B 8.36× vs. Emu3.5-34B" width="3223" height="969"></a>
+    <a href="assets/fig-benchmark-latency-v3.webp" target="_blank" rel="noopener"><img src="assets/fig-benchmark-latency-v3.webp" alt="Paper Figure 1 (c, d): average benchmark score bar chart, and Qwen-Image-Bench score versus latency per image at 1024 × 1024 with speed-up arrows, plus a speed-up panel: G-STAR-Flash-1.7B 21.57× vs. Janus-Pro-7B and 21.04× vs. BitDance-14B, G-STAR-Pro-8B 8.36× vs. Emu3.5-34B" width="3223" height="969"></a>
     <figcaption>(c) Average benchmark score. (d) Quality vs. latency at 1024²: Flash-1.7B takes 2.5 s per image, 21.04× faster than BitDance and 21.57× faster than Janus-Pro; Pro-8B is 8.36× faster than Emu3.5. The latency axis is logarithmic.</figcaption>
   </figure>
 </section>
@@ -107,7 +107,7 @@
 <section class="wrap section" id="editing">
   <p class="eyebrow">IMAGE EDITING</p>
   <h2>Change the instruction, keep the scene</h2>
-  <p class="lead">GSTAR-Pro-8B also edits images from text instructions, reaching <b>7.45</b> overall on GEdit-Bench (English), close to GPT-Image-1 (7.53) and Qwen-Image-Edit (7.56). Drag across each image to compare.</p>
+  <p class="lead">G-STAR-Pro-8B also edits images from text instructions, reaching <b>7.45</b> overall on GEdit-Bench (English), close to GPT-Image-1 (7.53) and Qwen-Image-Edit (7.56). Drag across each image to compare.</p>
   <div class="cards two edits">
     <article>
       <div class="compare" style="--split:50%">
@@ -120,12 +120,12 @@
     </article>
     <article>
       <div class="compare" style="--split:50%">
-        <img src="assets/edit-blackboard-result.webp" alt="Edited: blackboard heading replaced with the GSTAR paper title" loading="lazy" width="1024" height="1024">
+        <img src="assets/edit-blackboard-result.webp" alt="Edited: blackboard heading replaced with the G-STAR paper title" loading="lazy" width="1024" height="1024">
         <img class="before" src="assets/edit-blackboard-original.webp" alt="Original: blackboard with a creative-thinking heading" loading="lazy" width="1024" height="1024">
         <div class="handle"></div><span class="tag l">Original</span><span class="tag r">Edited</span>
         <input type="range" min="0" max="100" value="50" aria-label="Compare original and blackboard text edit">
       </div>
-      <h3>Text replacement</h3><p>Swap the blackboard heading for the GSTAR title while keeping chalk style and layout.</p>
+      <h3>Text replacement</h3><p>Swap the blackboard heading for the G-STAR title while keeping chalk style and layout.</p>
     </article>
   </div>
 </section>
@@ -135,13 +135,13 @@
   <a href="#efficiency"><span class="k">LATENCY · FLASH-1.7B · 1 × H200</span><strong data-count="2.5" data-dec="1">2.5<small>s</small></strong><p>per 1024 × 1024 image</p></a>
   <a href="#efficiency"><span class="k">VS. PRIOR DISCRETE AR</span><strong data-count="20" data-dec="0">20<small>×</small></strong><p>faster at 1024²</p></a>
   <a href="#method"><span class="k">SPATIAL COMPRESSION</span><strong data-count="64" data-dec="0">64<small>×</small></strong><p>effective · lossless 2×2 packing</p></a>
-  <a href="#results"><span class="k">QWEN-IMAGE-BENCH ↑</span><strong data-count="50.07" data-dec="2">50.07</strong><p>GSTAR-Pro-8B · 32×</p></a>
+  <a href="#results"><span class="k">QWEN-IMAGE-BENCH ↑</span><strong data-count="50.07" data-dec="2">50.07</strong><p>G-STAR-Pro-8B · 32×</p></a>
 </section>
 
 <!-- ============ VIDEO ============ -->
 <section class="wrap section" id="video">
   <p class="eyebrow">DEMO</p>
-  <h2>GSTAR in about a minute</h2>
+  <h2>G-STAR in about a minute</h2>
   <div class="video-frame">
     <video controls playsinline preload="metadata" poster="assets/demo-poster.jpg">
       <source src="assets/demo.mp4" type="video/mp4">
@@ -156,7 +156,7 @@
   <p class="eyebrow">ABSTRACT</p>
   <h2>Short sequences, rich tokens</h2>
   <p>Discrete autoregressive models offer a scalable framework for image generation. However, they face a fundamental trade-off: long token sequences preserve representation quality but slow generation, while aggressive spatial compression reduces representation capacity. Based on product quantization, we show that, under a fixed nominal information budget, <strong>group size should scale quadratically with the per-axis spatial compression factor</strong>.</p>
-  <p>Building on this principle, we propose <strong>GSTAR</strong>, a spatial–group co-scaling framework that enables <strong>32× and even effective 64× compression</strong> while preserving strong reconstruction, understanding, and generation performance. Since larger groups introduce intra-group dependencies that must be modeled efficiently, we analyze their impact on inference latency and generation quality and introduce a <strong>semi-autoregressive decoder</strong> that combines parallel feature computation with lightweight causal modeling.</p>
+  <p>Building on this principle, we propose <strong>G-STAR</strong>, a spatial–group co-scaling framework that enables <strong>32× and even effective 64× compression</strong> while preserving strong reconstruction, understanding, and generation performance. Since larger groups introduce intra-group dependencies that must be modeled efficiently, we analyze their impact on inference latency and generation quality and introduce a <strong>semi-autoregressive decoder</strong> that combines parallel feature computation with lightweight causal modeling.</p>
   <p>With these designs, our highly compressed models perform competitively with leading models across five representative text-to-image benchmarks (GenEval, DPG-Bench, PRISM, LongText-Bench, and Qwen-Image-Bench). At 1024 × 1024 resolution, our model delivers a <strong>20× speedup</strong> over prior discrete autoregressive models, generating each image in <strong>2.5 seconds on a single NVIDIA H200</strong>.</p>
 </section>
 
@@ -193,7 +193,7 @@
         <div><dt>Total codes</dt><dd>8,192</dd></div>
         <div><dt>Nominal budget</dt><dd>114,688 bits</dd></div>
       </dl>
-      <p class="fine">Illustration anchored at f32g8, the tokenizer behind GSTAR-Flash. Nominal capacity is a fixed-length bit count, not a guarantee of fidelity.</p>
+      <p class="fine">Illustration anchored at f32g8, the tokenizer behind G-STAR-Flash. Nominal capacity is a fixed-length bit count, not a guarantee of fidelity.</p>
     </div>
     <div class="explorer-vis">
       <canvas id="cs-canvas" width="640" height="640" aria-label="Image divided into a grid of global token positions"></canvas>
@@ -203,7 +203,7 @@
   </div>
 
   <h3 class="sub">Parallel computation. Causal consistency.</h3>
-  <p class="lead">Each global step must emit a tuple of G correlated codes. A causal head repeats the full head G times. A parallel head is fast but samples codes independently and can mix incompatible modes. GSTAR runs the heavy trunk once and keeps only a one-layer causal module sequential.</p>
+  <p class="lead">Each global step must emit a tuple of G correlated codes. A causal head repeats the full head G times. A parallel head is fast but samples codes independently and can mix incompatible modes. G-STAR runs the heavy trunk once and keeps only a one-layer causal module sequential.</p>
 
   <figure class="paper-figure">
     <img src="assets/fig-heads.webp" alt="Paper Figure 3 comparing causal autoregressive, parallel prediction and semi-autoregressive intra-group heads" loading="lazy" width="2400" height="830">
@@ -240,7 +240,7 @@
 <section class="wrap section" id="results">
   <p class="eyebrow">02 · RESULTS</p>
   <h2>Two models, one framework</h2>
-  <p class="lead"><b class="pro">GSTAR-Pro-8B</b> uses a 32× tokenizer with G = 16. <b class="flash">GSTAR-Flash-1.7B</b> uses the effective 64× tokenizer with G = 32. Both are trained with PT → CT → SFT and support generation and editing.</p>
+  <p class="lead"><b class="pro">G-STAR-Pro-8B</b> uses a 32× tokenizer with G = 16. <b class="flash">G-STAR-Flash-1.7B</b> uses the effective 64× tokenizer with G = 32. Both are trained with PT → CT → SFT and support generation and editing.</p>
 
   <div class="table-head">
     <h3>Text-to-image benchmarks</h3>
@@ -301,8 +301,8 @@
           <tr><th>VAR</th><td>16×</td><td>23.43</td></tr>
           <tr><th>Emu3.5</th><td>16×</td><td>23.82</td></tr>
           <tr><th>Open-MAGVIT2</th><td>16×</td><td>23.98</td></tr>
-          <tr class="hl"><th>GSTAR f32g16</th><td>32×</td><td><b>25.12</b></td></tr>
-          <tr class="hl"><th>GSTAR f64g32</th><td>64×</td><td>23.90</td></tr>
+          <tr class="hl"><th>G-STAR f32g16</th><td>32×</td><td><b>25.12</b></td></tr>
+          <tr class="hl"><th>G-STAR f64g32</th><td>64×</td><td>23.90</td></tr>
         </tbody>
       </table></div>
       <p class="note">ImageNet val, 512² (paper Table 9).</p>
@@ -340,7 +340,7 @@
 <section class="wrap section" id="efficiency">
   <p class="eyebrow">03 · EFFICIENCY</p>
   <h2>From 22.23 s to 2.50 s</h2>
-  <p class="lead">Shorter global sequences and a faster head cut the cost of the model itself; system work does the rest. Four cumulative optimizations compound to an <b>8.9×</b> end-to-end speedup for GSTAR-Flash-1.7B at 1024².</p>
+  <p class="lead">Shorter global sequences and a faster head cut the cost of the model itself; system work does the rest. Four cumulative optimizations compound to an <b>8.9×</b> end-to-end speedup for G-STAR-Flash-1.7B at 1024².</p>
   <div class="speed" id="speed" role="img" aria-label="Latency: causal head baseline 22.23 s; semi-AR head 14.93 s; plus CUDA Graph 5.85 s; plus kernel fusion 3.37 s; plus SGLang serving 2.50 s">
     <div class="row"><span class="lbl">Causal-head baseline</span><span class="bar"><i style="--w:100%"></i></span><b>22.23 s</b><em></em></div>
     <div class="row"><span class="lbl">Semi-AR head</span><span class="bar"><i style="--w:67.16%"></i></span><b>14.93 s</b><em>1.49×</em></div>
@@ -372,7 +372,7 @@
 </main>
 
 <footer>
-  <p>GSTAR · Peking University &amp; Meituan Longcat</p>
+  <p>G-STAR · Peking University &amp; Meituan Longcat</p>
   <p class="fine">Page layout shared with <a href="https://github.com/DAGroup-PKU/DCSAE">DC-SAE</a>. All numbers are from the paper.</p>
 </footer>
 

@@ -20,8 +20,8 @@ const T2I = [
   ['GLM-Image', '16×', '16B', 0.72, 84.78, 7.32, 0.952, 48.19, 'ar'],
   ['Emu3.5', '16×', '34.1B', 0.86, 88.26, 7.52, 0.976, 49.89, 'ar'],
   ['BitDance', '16×', '14B', 0.86, 88.28, 7.19, 0.837, 45.19, 'ar'],
-  ['GSTAR-Pro-8B (ours)', '32×', '8B', 0.84, 83.38, 6.98, 0.935, 50.07, 'pro'],
-  ['GSTAR-Flash-1.7B (ours)', '64×', '1.7B', 0.76, 80.18, 6.81, 0.853, 46.88, 'flash'],
+  ['G-STAR-Pro-8B (ours)', '32×', '8B', 0.84, 83.38, 6.98, 0.935, 50.07, 'pro'],
+  ['G-STAR-Flash-1.7B (ours)', '64×', '1.7B', 0.76, 80.18, 6.81, 0.853, 46.88, 'flash'],
 ];
 const GROUP_LABEL = { prop: 'Proprietary', diff: 'Diffusion', ar: 'Autoregressive', ours: 'Ours' };
 const DIGITS = [0, 0, 0, 2, 2, 2, 3, 2];

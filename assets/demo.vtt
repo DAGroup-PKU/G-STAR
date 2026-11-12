@@ -18,7 +18,7 @@ Compress harder and the sequence gets short, but each token must carry far more 
 
 5
 00:00:15.300 --> 00:00:17.800
-Meet GSTAR: group-scaled token capacity.
+Meet G-STAR: group-scaled token capacity.
 
 6
 00:00:18.300 --> 00:00:21.400
@@ -58,4 +58,4 @@ It edits images too, scoring 7.45 on GEdit-Bench.
 
 15
 00:00:53.800 --> 00:00:57.600
-GSTAR. Short sequences, rich tokens, high-quality images.
+G-STAR. Short sequences, rich tokens, high-quality images.
