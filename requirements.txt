@@ -1,0 +1,19 @@
+# CUDA wheels for torch/torchaudio must match the host CUDA installation.
+torch==2.6.0
+torchaudio==2.6.0
+torchvision==0.21.0
+transformers==4.57.0
+accelerate>=1.0,<2
+deepspeed==0.19.0
+flash-attn>=2.7,<3
+safetensors>=0.4
+numpy<2
+Pillow>=10
+json5
+einops
+omegaconf
+timm
+diffusers
+opencv-python-headless
+tensorboard
+tqdm

@@ -1,0 +1,61 @@
+WEBVTT
+
+1
+00:00:00.300 --> 00:00:03.800
+Diffusion UMMs keep three copies of every image, and learn by denoising.
+
+2
+00:00:04.000 --> 00:00:07.300
+A discrete model needs just one copy, and every token is a prediction target.
+
+3
+00:00:07.700 --> 00:00:10.800
+The catch: it paints one token at a time, so high resolution means long, slow sequences.
+
+4
+00:00:11.200 --> 00:00:14.700
+Compress harder and the sequence gets short, but each token must carry far more detail.
+
+5
+00:00:15.300 --> 00:00:17.800
+Meet G-STAR: group-scaled token capacity.
+
+6
+00:00:18.300 --> 00:00:21.400
+Vision encoders like Qwen-ViT already merge 2×2 sub-tokens along the channel.
+
+7
+00:00:21.600 --> 00:00:24.500
+Quantize each one before merging, and every position holds a group of codes.
+
+8
+00:00:24.900 --> 00:00:27.700
+Double the compression, quadruple the group: the bit budget stays the same.
+
+9
+00:00:27.900 --> 00:00:30.800
+Packing 2×2 turns a 32× tokenizer into an effective 64× one, losslessly.
+
+10
+00:00:31.300 --> 00:00:35.100
+A causal head is slow; a parallel head is fast, but its codes can collide.
+
+11
+00:00:35.300 --> 00:00:39.200
+Our semi-autoregressive head: one parallel pass, then a one-layer causal sweep.
+
+12
+00:00:39.800 --> 00:00:44.200
+With system optimizations, a 1024 × 1024 image takes just 2.5 s on one H200,
+
+13
+00:00:44.700 --> 00:00:49.200
+up to 21× faster than prior discrete AR models, with no loss in quality.
+
+14
+00:00:49.800 --> 00:00:53.200
+It edits images too, scoring 7.45 on GEdit-Bench.
+
+15
+00:00:53.800 --> 00:00:57.600
+G-STAR. Short sequences, rich tokens, high-quality images.
