@@ -1,6 +1,6 @@
-# G-star + Qwen3
+# G-STAR + Qwen3
 
-G-star supports text-to-image generation, instruction-based image editing,
+G-STAR supports text-to-image generation, instruction-based image editing,
 image understanding, pretraining and SFT with a discrete visual tokenizer and
 an AR or DSpark image head on a Qwen3 backbone.
 
@@ -340,5 +340,5 @@ DeepSpeed ZeRO-2 on two GPUs.
 
 ## License
 
-Original G-star code is licensed under the [MIT License](LICENSE).
+Original G-STAR code is licensed under the [MIT License](LICENSE).
 Third-party components retain their respective licenses and copyright notices.

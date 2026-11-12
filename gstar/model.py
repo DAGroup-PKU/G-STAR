@@ -23,7 +23,7 @@ def load(model_path, visual_path, training=False, max_length=8192):
                 ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")
                 if loading.get(key)}
     if problems:
-        raise ValueError("Checkpoint does not match the G-star implementation: " + str(problems))
+        raise ValueError("Checkpoint does not match the G-STAR implementation: " + str(problems))
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True,
                                              model_max_length=max_length)
     if tokenizer.pad_token_id is None:

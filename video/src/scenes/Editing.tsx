@@ -31,7 +31,7 @@ export const Editing: React.FC = () => (
       <Rise at={6}><Headline size={46} style={{ marginTop: 10 }}>Change the instruction, keep the scene</Headline></Rise>
       <div style={{ display: 'flex', gap: 70, marginTop: 34 }}>
         <Wipe before="edit-watercolor-original.webp" after="edit-watercolor-result.webp" prompt="Turn the photo into a watercolor illustration" at={6} />
-        <Wipe before="edit-blackboard-original.webp" after="edit-blackboard-result.webp" prompt="Replace the heading with the GSTAR title" at={14} />
+        <Wipe before="edit-blackboard-original.webp" after="edit-blackboard-result.webp" prompt="Replace the heading with the G-STAR title" at={14} />
       </div>
     </AbsoluteFill>
   </SceneFade>

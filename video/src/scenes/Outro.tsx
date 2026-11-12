@@ -20,7 +20,7 @@ export const Outro: React.FC = () => {
         </div>
         <AbsoluteFill style={{ background: `rgba(5,7,13,${0.15 + dim * 0.7})` }} />
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 110, opacity: dim }}>
-          <div style={{ fontFamily: 'Caveat, cursive', fontSize: 200, lineHeight: 1, padding: '0 30px', background: `linear-gradient(90deg, ${C.pro}, #ffffff 45%, #6692f1)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>GSTAR</div>
+          <div style={{ fontFamily: 'Caveat, cursive', fontSize: 200, lineHeight: 1, padding: '0 30px', background: `linear-gradient(90deg, ${C.pro}, #ffffff 45%, #6692f1)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>G-STAR</div>
           <div style={{ fontFamily: FONT, fontSize: 40, color: '#e2e7f0', marginTop: 4 }}>Short sequences. Rich tokens. High-quality images.</div>
           <Rise at={44} style={{ display: 'flex', gap: 22, marginTop: 40, fontFamily: FONT, fontSize: 26, color: C.muted }}>
             <span>32× &amp; effective 64× tokenizers</span><span>·</span><span>semi-AR head</span><span>·</span><span>2.5 s / 1024² image</span>

@@ -17,7 +17,7 @@ export const Speed: React.FC = () => {
   return (
     <SceneFade outF={8}>
       <AbsoluteFill style={{ padding: '0 120px 150px', justifyContent: 'center' }}>
-        <Rise at={0}><Eyebrow>Efficiency · GSTAR-Flash-1.7B · 1024² · 1 × H200</Eyebrow></Rise>
+        <Rise at={0}><Eyebrow>Efficiency · G-STAR-Flash-1.7B · 1024² · 1 × H200</Eyebrow></Rise>
         <Rise at={6}><Headline size={50} style={{ marginTop: 12 }}>From 22.23 s to <span style={{ color: C.blueSoft }}>2.50 s</span> per image</Headline></Rise>
         <div style={{ display: 'flex', gap: 60, marginTop: 56, alignItems: 'center' }}>
           <Card style={{ padding: '40px 40px', display: 'flex', flexDirection: 'column', gap: 34 }}>

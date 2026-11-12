@@ -55,7 +55,7 @@ class ImageTrainer(Trainer):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Pretrain/SFT with frozen G-star and AR/DSpark heads")
+    parser = argparse.ArgumentParser(description="Pretrain/SFT with frozen G-STAR and AR/DSpark heads")
     parser.add_argument("--config", required=True)
     parser.add_argument("--model", required=True, help="Initialized HF directory or pretrain checkpoint for SFT")
     parser.add_argument("--data")

@@ -1,6 +1,6 @@
-# GSTAR project-page draft
+# G-STAR project-page draft
 
-Project page for **GSTAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation**.
+Project page for **G-STAR: Group-Scaled Token Capacity for Deeply Compressed Autoregressive Generation**.
 
 ## Preview locally
 

@@ -13,8 +13,8 @@ const models=[
 ['GLM-Image','16×','16B','0.72','84.78','7.32','0.952','48.19','ar'],
 ['Emu3.5','16×','34.1B','0.86','88.26','7.52','0.976','49.89','ar'],
 ['BitDance','16×','14B','0.86','88.28','7.19','0.837','45.19','ar'],
-['GSTAR-Pro-8B','32×','8B','0.84','83.38','6.98','0.935','50.07','ours'],
-['GSTAR-Flash-1.7B','64×*','1.7B','0.76','80.18','6.81','0.853','46.88','ours']];
+['G-STAR-Pro-8B','32×','8B','0.84','83.38','6.98','0.935','50.07','ours'],
+['G-STAR-Flash-1.7B','64×*','1.7B','0.76','80.18','6.81','0.853','46.88','ours']];
 function renderTable(filter){const tbody=document.querySelector('#benchmark tbody');tbody.replaceChildren();for(const row of models){if(filter==='ours'&&row[8]!=='ours')continue;if(filter==='ar'&&row[8]==='other')continue;const tr=document.createElement('tr');if(row[8]==='ours')tr.className='ours';row.slice(0,8).forEach((text,i)=>{const cell=document.createElement(i===0?'th':'td');if(i===0)cell.scope='row';cell.textContent=text;tr.append(cell)});tbody.append(tr)}}renderTable('all');
 for(const button of document.querySelectorAll('[data-filter]'))button.addEventListener('click',()=>{for(const other of document.querySelectorAll('[data-filter]')){other.classList.toggle('active',other===button);other.setAttribute('aria-pressed',String(other===button))}renderTable(button.dataset.filter)});
 document.querySelector('#scale').addEventListener('change',event=>{const packed=event.target.value==='64';document.querySelector('#steps').textContent=packed?'256':'1,024';document.querySelector('#groups').textContent=packed?'32':'8'});

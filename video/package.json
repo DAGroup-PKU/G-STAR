@@ -1,7 +1,7 @@
 {
   "name": "gstar-demo-video",
   "private": true,
-  "description": "Remotion source for the GSTAR demo video",
+  "description": "Remotion source for the G-STAR demo video",
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render GSTARDemo out/demo.mp4 --codec=h264 --crf=20",

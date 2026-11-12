@@ -9,12 +9,12 @@ const SPEED = [
 // Qwen-Image-Bench overall, paper Table 1 (top entries)
 const QIB = [
   { m: 'GPT Image 1', v: 54.07, c: '#5d6678', tag: 'proprietary' },
-  { m: 'GSTAR-Pro-8B', v: 50.07, c: C.pro, ours: true },
+  { m: 'G-STAR-Pro-8B', v: 50.07, c: C.pro, ours: true },
   { m: 'Emu3.5', v: 49.89, c: '#7f9cc9' },
   { m: 'Qwen-Image', v: 49.23, c: '#7f9cc9' },
   { m: 'Z-Image', v: 49.1, c: '#7f9cc9' },
   { m: 'GLM-Image', v: 48.19, c: '#7f9cc9' },
-  { m: 'GSTAR-Flash-1.7B', v: 46.88, c: C.flash, ours: true },
+  { m: 'G-STAR-Flash-1.7B', v: 46.88, c: C.flash, ours: true },
   { m: 'BitDance', v: 45.19, c: '#7f9cc9' },
 ];
 const MIN = 40, MAXV = 55, BW = 520;

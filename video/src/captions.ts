@@ -4,7 +4,7 @@ export const CAPTIONS: { start: number; end: number; text: string }[] = [
   { start: 4.0, end: 7.3, text: 'A discrete model needs just one copy, and every token is a prediction target.' },
   { start: 7.7, end: 10.8, text: 'The catch: it paints one token at a time, so high resolution means long, slow sequences.' },
   { start: 11.2, end: 14.7, text: 'Compress harder and the sequence gets short, but each token must carry far more detail.' },
-  { start: 15.3, end: 17.8, text: 'Meet GSTAR: group-scaled token capacity.' },
+  { start: 15.3, end: 17.8, text: 'Meet G-STAR: group-scaled token capacity.' },
   { start: 18.3, end: 21.4, text: 'Vision encoders like Qwen-ViT already merge 2×2 sub-tokens along the channel.' },
   { start: 21.6, end: 24.5, text: 'Quantize each one before merging, and every position holds a group of codes.' },
   { start: 24.9, end: 27.7, text: 'Double the compression, quadruple the group: the bit budget stays the same.' },
@@ -14,5 +14,5 @@ export const CAPTIONS: { start: number; end: number; text: string }[] = [
   { start: 39.8, end: 44.2, text: 'With system optimizations, a 1024 × 1024 image takes just 2.5 s on one H200,' },
   { start: 44.7, end: 49.2, text: 'up to 21× faster than prior discrete AR models, with no loss in quality.' },
   { start: 49.8, end: 53.2, text: 'It edits images too, scoring 7.45 on GEdit-Bench.' },
-  { start: 53.8, end: 57.6, text: 'GSTAR. Short sequences, rich tokens, high-quality images.' },
+  { start: 53.8, end: 57.6, text: 'G-STAR. Short sequences, rich tokens, high-quality images.' },
 ];
