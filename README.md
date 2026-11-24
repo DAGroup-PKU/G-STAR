@@ -18,7 +18,7 @@ Haodong Li<sup>2,5</sup> · Wenhao Yan<sup>2,6</sup> · Yaxin Luo<sup>2,7</sup> 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.6-EE4C2C?logo=pytorch&logoColor=white)](docs/installation-and-usage.md#install)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[Installation & Usage](docs/installation-and-usage.md) · [Results](#-results) · [Citation](#️-citation)
+[Installation & Usage](docs/installation-and-usage.md) · [Results](#-results) · [Faster Inference](#-faster-inference-with-rba) · [Citation](#️-citation)
 
 </div>
 
@@ -139,6 +139,23 @@ The semi-AR head stays close to the causal head in quality at about half its hea
 | | *Watercolor illustration* | | *Replace the blackboard heading* |
 
 All numbers are reported in the paper, which includes the full per-benchmark tables and ablations.
+
+## ⚡ Faster Inference with RBA
+
+The PyTorch inference path of this repository (`inference.py`, also `python -m gstar.infer`) was optimized with [ResearchBoost-Agent (RBA)](https://github.com/DAGroup-PKU/ResearchBoost-Agent) in [#2](https://github.com/DAGroup-PKU/G-STAR/pull/2). The fast paths are on by default and need no extra flags. Each one falls back to the reference code when its requirements do not hold, and `GSTAR_FAST=0` turns all of them off.
+
+| Pipeline (single NVIDIA H200, batch 1, BF16) | Before | After | Speedup |
+| :--- | :---: | :---: | :---: |
+| G-STAR-Pro-8B + one-step SR2x refiner (default) | 65.1 s | 10.5 s | **6.18×** |
+| G-STAR-Pro-8B + 52-step SR2x refiner | 138.6 s | 50.8 s | **2.73×** |
+| G-STAR-Flash-1.7B + g8 refiner | 33.2 s | 12.2 s | **2.72×** |
+
+> Seconds per image with the model loaded, measured against this repository before the change in the same session, refiner included. A single `inference.py` call also loads the model (about 13 s), and the first run on a machine compiles the CUDA extensions once (about 2.5 min). End to end, one Pro + one-step image then takes 32.9 s instead of 82.1 s. The low-latency table above measures a different setup: the paper's serving stack.
+
+- **Same outputs.** The language model and image head reproduce the reference arithmetic bit for bit, so the image codes are identical. The refiner changes only floating-point rounding (PSNR 57–59 dB against the reference).
+- **Language model.** CUDA graphs of the decode step and of the head's sampling, fused bit-exact kernels, and replicas of cuBLAS's decode GEMMs.
+- **Refiner.** A single-sample DiT path, FlashInfer's sm90 attention, large-tile cuBLASLt GEMMs and fused norm kernels.
+- **Coverage.** One code path serves Pro and Flash. Opt-outs, requirements and the measurements are in [Fast inference paths](docs/installation-and-usage.md#fast-inference-paths).
 
 ## ⚙️ Installation & Usage
 
