@@ -36,6 +36,7 @@ Haodong Li<sup>2,5</sup> · Wenhao Yan<sup>2,6</sup> · Yaxin Luo<sup>2,7</sup> 
 `G-STAR-Pro-8B` = quality-oriented, 32× compression&nbsp;&nbsp;|&nbsp;&nbsp;`G-STAR-Flash-1.7B` = low-latency, effective 64× compression
 
 ## 🔥 News
+- `[2026.11.24]` ⚡ **Faster inference, on by default**, optimized with [ResearchBoost-Agent (RBA)](https://github.com/DAGroup-PKU/ResearchBoost-Agent). Per image on one H200 with the model loaded, against the previous code: **6.18×** for G-STAR-Pro-8B with the one-step SR2x refiner, now the default (65.1 → 10.5 s); **2.73×** with the 52-step refiner (138.6 → 50.8 s); **2.72×** for G-STAR-Flash-1.7B (33.2 → 12.2 s). Image codes are bit-identical to the reference; refiner pixels differ only by rounding (PSNR ≈ 57–59 dB). `GSTAR_FAST=0` turns it off. See [Fast inference paths](docs/installation-and-usage.md#fast-inference-paths).
 - `[2026.11.04]` 🔥 We release the **inference and training code** of G-STAR: text-to-image generation, instruction-based image editing, pretraining and SFT!
 
 ## 📑 Todo List
