@@ -26,6 +26,7 @@ weights on NVIDIA H100 GPUs.
 - [Image heads](#image-heads)
 - [Data](#data): [records](#records) · [image descriptors](#image-descriptors) · [manifests](#manifests) · [building data](#building-data)
 - [Training](#training)
+- [Python API](#python-api)
 - [Tests](#tests)
 
 ## Install
@@ -111,7 +112,7 @@ a native 2048 image. To use the 52-step SR2x refiner instead, pass its folder
 (`refiner/` in the Hugging Face repository) as `--visual-tokenizer`.
 
 ```bash
-OMNI_DISABLE_WAVELET_COLOR_FIX=1 python -m gstar.infer \
+OMNI_DISABLE_WAVELET_COLOR_FIX=1 python inference.py \
   --task t2i --model "$T2I_MODEL" --visual-tokenizer "$T2I_REFINER" \
   --prompt-mode pretrain \
   --prompt 'A golden retriever lying on a wooden floor, looking up at its owner, warm morning sunlight, realistic photography.' \
@@ -145,7 +146,7 @@ refiner (1024 output). It uses SFT roles and CFG 1.8:
 ```bash
 export FLASH_MODEL="$PWD/weights/gstar-flash-1.7b"
 export FLASH_REFINER="$PWD/weights/gstar-flash-1.7b-refiner"
-python -m gstar.infer \
+python inference.py \
   --task t2i --model "$FLASH_MODEL" --visual-tokenizer "$FLASH_REFINER" \
   --prompt-mode sft \
   --prompt 'A golden retriever lying on a wooden floor, looking up at its owner, warm morning sunlight, realistic photography.' \
@@ -174,7 +175,7 @@ The PE models need `transformers>=5.4`, newer than the version pinned in
 subprocess (`python -m gstar.prompt_enhance`):
 
 ```bash
-OMNI_DISABLE_WAVELET_COLOR_FIX=1 python -m gstar.infer \
+OMNI_DISABLE_WAVELET_COLOR_FIX=1 python inference.py \
   --task t2i --model "$T2I_MODEL" --visual-tokenizer "$T2I_REFINER" \
   --prompt-mode pretrain --prompt '一只在雨中弹吉他的柯基' \
   --prompt-enhance --pe-python /path/to/pe-env/bin/python \
@@ -196,7 +197,7 @@ with Image.open('source.png') as image:
                  method=Image.Resampling.LANCZOS).save('source_1024.png')
 PY
 
-python -m gstar.infer \
+python inference.py \
   --task edit --model "$EDIT_MODEL" --visual-tokenizer "$EDIT_REFINER" \
   --image source_1024.png --prompt '将背景改为城市街道' \
   --height 1024 --width 1024 --cfg 1.8 --image-cfg 1.8 \
@@ -294,14 +295,14 @@ loaded from there afterwards.
 
 ## Image heads
 
-| Config | Tokenizer groups | Spatial merge | Head |
+| Architecture (`gstar/models/configs/`) | Tokenizer groups | Spatial merge | Head |
 | --- | --- | --- | --- |
-| `configs/models/gstar_ar.json` | 16 | 1x1 | Causal PQ AR |
-| `configs/models/gstar_dspark.json` | 16 | 1x1 | DSpark, 16 groups: 3 all-MASK layers + 1 group-causal layer |
-| `configs/models/gstar_dspark64.json` | 16 | 2x2 | DSpark, 64 groups |
+| `gstar_ar` | 16 | 1x1 | Causal PQ AR |
+| `gstar_dspark` | 16 | 1x1 | DSpark, 16 groups: 3 all-MASK layers + 1 group-causal layer |
+| `gstar_dspark64` | 16 | 2x2 | DSpark, 64 groups |
 
 For DSpark, `image_head_group_count` must equal `depth * merger_merge_size**2`
-(checked by `gstar.config.validate_geometry`). A g16 tokenizer with a 2x2
+(checked by `gstar.utils.config.validate_geometry`). A g16 tokenizer with a 2x2
 merge therefore needs 64 head groups.
 
 ## Data
@@ -393,44 +394,50 @@ Training uses a base Qwen checkpoint and a frozen visual tokenizer. Set:
 ```bash
 export QWEN=/path/to/Qwen3-8B-Base
 export VISUAL_TOKENIZER=/path/to/gstar-training-tokenizer
-export HEAD=dspark  # ar | dspark | dspark64
+export HEAD=gstar_dspark  # gstar_ar | gstar_dspark | gstar_dspark64
 ```
 
 ```bash
 # Once: load the Qwen backbone and randomly initialize bridge + image head.
-python -m gstar.init --config "configs/models/gstar_${HEAD}.json" \
-  --llm "$QWEN" --output "outputs/init_${HEAD}"
+python init_checkpoint.py --model "$HEAD" --llm "$QWEN" --output "outputs/init_${HEAD}"
 
 # Pretrain (single node).
-NPROC_PER_NODE=8 bash scripts/train.sh --config configs/pretrain.json \
+NPROC_PER_NODE=8 ./distributed_train.sh -c configs/pretrain.yaml \
   --model "outputs/init_${HEAD}" --visual-tokenizer "$VISUAL_TOKENIZER" \
   --output "outputs/pretrain_${HEAD}"
 
 # SFT starts directly from a full pretrain checkpoint.
-NPROC_PER_NODE=8 bash scripts/train.sh --config configs/sft.json \
+NPROC_PER_NODE=8 ./distributed_train.sh -c configs/sft.yaml \
   --model "outputs/pretrain_${HEAD}/checkpoint-1000" --visual-tokenizer "$VISUAL_TOKENIZER" \
   --output "outputs/sft_${HEAD}"
+
+# Validation loss of checkpoints on held-out data.
+python validate.py --model "outputs/pretrain_${HEAD}/checkpoint-1000" \
+  --visual-tokenizer "$VISUAL_TOKENIZER" --data /path/to/val.jsonl --stage pretrain --num-batches 100
 ```
 
 For multiple nodes set `NNODES`, `NODE_RANK`, `MASTER_ADDR` and `MASTER_PORT`
 on every node (e.g. 16 nodes x 8 GPUs: `NNODES=16 NPROC_PER_NODE=8`).
-`--data` overrides the manifest in the recipe; `visual_tokenizer` can also be
-set in the recipe instead of passing `--visual-tokenizer`.
+The YAML config gives the defaults of `train.py`'s arguments (`python train.py --help`
+lists them); flags on the command line override it, e.g. `--data`, `--lr`,
+`--max-steps` or `--visual-tokenizer` (which can also be set in the config).
+The run's arguments are saved to `<output>/args.yaml`.
 
 **Resolution.** For fixed 512/1024 training pass `--resolution 512` (or 1024)
-to `gstar.init` and point `--data` at a matching manifest. Add `--anyres` for
+to `init_checkpoint.py` and point `--data` at a matching manifest. Add `--anyres` for
 variable aspect ratios within that pixel budget. Inference height/width must be
 divisible by `patch_size * merge_size * merger_merge_size`.
 
-**Sampling during training.** Every `evaluation.every` steps (default 1000)
-rank zero writes samples to `<output>/samples/step-N/`. Prompts, image size and
-CFG are set in the recipe; `every: 0` disables it.
+**Sampling during training.** Every `sample_every` steps (1000 in the pretrain
+config) rank zero writes samples to `<output>/samples/step-N/`. Prompts, image
+size and CFG are `sample_prompts`, `sample_image_size` and `sample_cfg`;
+`sample_every: 0` disables it.
 
 **Switching heads.** Convert an AR checkpoint to a fresh DSpark head while
 keeping the backbone, bridge and resolution:
 
 ```bash
-python -m gstar.init --config configs/models/gstar_dspark.json \
+python init_checkpoint.py --model gstar_dspark \
   --source-model /path/to/ar_checkpoint --output outputs/init_dspark
 ```
 
@@ -448,6 +455,40 @@ batch/accumulation settings unchanged.
 the full embedding table, AdamW (0.9, 0.96), linear warmup and cosine decay to
 10% of the peak LR.
 
+**Earlier commands.** `python -m gstar.infer`, `python -m gstar.init`,
+`python -m gstar.train`, `scripts/train.sh` and the nested JSON recipes of
+earlier versions (`--config recipe.json`) still work; they run the scripts
+above.
+
+## Python API
+
+The package follows timm's layout: an architecture registry and `create_model`,
+with data, optimizer, scheduler and trainer factories next to it.
+
+```python
+import gstar
+
+gstar.list_models()                       # ['gstar_ar', 'gstar_dspark', 'gstar_dspark64']
+gstar.list_pretrained()                   # released checkpoints and their refiners
+
+# A released checkpoint (downloaded from the Hugging Face Hub), or a local checkpoint folder.
+model = gstar.create_model("hf-hub:DAGroup-PKU/G-star")
+# A new model of an architecture, with a Qwen backbone's weights copied in.
+model = gstar.create_model("gstar_dspark", backbone="/path/to/Qwen3-8B-Base")
+
+# Model, tokenizer, processor and frozen visual tokenizer, as inference.py and train.py load them.
+model, tokenizer, processor, visual = gstar.load("/path/to/G-star", "/path/to/oneStep-SR2x_refiner")
+```
+
+| Module | Contents |
+| --- | --- |
+| `gstar.models` | registry (`register_model`, `list_models`), `create_model`, checkpoint loading, initialization |
+| `gstar.data` | `create_dataset` (weighted JSONL sources, packing), `create_collate_fn` |
+| `gstar.optim` / `gstar.scheduler` | `create_optimizer` (image-head LR, name-based decay), `create_scheduler` |
+| `gstar.trainer` | `ImageTrainer`, `set_trainable`, the periodic sampling callback |
+| `gstar.generation` | text-to-image, editing, prompt enhancement |
+| `gstar.utils` | paths and the config-file handling of the scripts |
+
 ## Tests
 
 ```bash
@@ -455,7 +496,7 @@ python -m unittest discover -s tests -v
 python -m torch.distributed.run --standalone --nproc_per_node=2 tests/smoke_distributed.py
 ```
 
-Data tests use synthetic images and need no GPU (FlashAttention must still be
-importable). Model tests need CUDA and use shrunken model configs. The distributed smoke test runs
+Data and layout tests use synthetic images or shrunken configs and need no GPU
+for the data part (FlashAttention must still be importable). Model tests need CUDA and use shrunken model configs. The distributed smoke test runs
 DeepSpeed ZeRO-2 on two GPUs.
 
