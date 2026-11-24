@@ -16,6 +16,11 @@ from dataclasses import dataclass
 
 import torch
 import torch.distributed
+try:  # the repository's switches; loaded as a checkpoint sidecar without the gstar package: reference code only
+    from gstar.fast import enabled as _fast_on
+except ImportError:
+    def _fast_on(part=None):
+        return False
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
@@ -136,6 +141,14 @@ class RotaryEmbedding(torch.nn.Module):
         emb = torch.cat((freqs, freqs), dim=-1)
         self.cos_cached = emb.cos()[None, None, :, :].to(torch.float32)
         self.sin_cached = emb.sin()[None, None, :, :].to(torch.float32)
+
+    def device_tables(self, device):
+        """The full cos/sin tables (exactly the CPU-built fp32 values) on `device`."""
+        dev = getattr(self, "_dev_tables", None)
+        if dev is None or dev[0].device != device or dev[0].shape[2] != self.cos_cached.shape[2]:
+            dev = (self.cos_cached.to(torch.float32).to(device), self.sin_cached.to(torch.float32).to(device))
+            self._dev_tables = dev
+        return dev
 
     def forward(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
@@ -283,9 +296,16 @@ class Attention(nn.Module):
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
         if self.position_embedding_type == 'rope':
-            max_position = (attention_metadata[0] if attention_metadata is not None else
-                            (position_ids.max().item()+1 if position_ids is not None else kv_seq_len * get_sequence_parallel_size()))
-            cos, sin = self.rotary_emb(value_states, seq_len=max_position)
+            if (attention_metadata is None and position_ids is not None and not self.training and _fast_on()
+                    and kv_seq_len * get_sequence_parallel_size() <= self.rotary_emb.max_seq_len_cached):
+                # Generation positions never exceed the KV length, so the full table holds every
+                # row the gather below reads: same values as slicing it at max(position)+1,
+                # without a host synchronization per layer.
+                cos, sin = self.rotary_emb.device_tables(value_states.device)
+            else:
+                max_position = (attention_metadata[0] if attention_metadata is not None else
+                                (position_ids.max().item()+1 if position_ids is not None else kv_seq_len * get_sequence_parallel_size()))
+                cos, sin = self.rotary_emb(value_states, seq_len=max_position)
             query_states, key_states = apply_rotary_pos_emb(
                 query_states, key_states, cos, sin,
                 get_sequence_parallel_chunk(position_ids)
@@ -491,6 +511,8 @@ class OmniModel(OmniPreTrainedModel):
         3. embedding mask / lm_head mask 标记出特殊token在embedding中的mask
         '''
         pad_mask = torch.eq(input_ids, pad_token_id)
+        if not self.training and getattr(self, "_gstar_pad_mask_only", False):
+            return pad_mask, None, None
         sp_mask = torch.zeros_like(input_ids, dtype=torch.bool)
         lm_head_mask = torch.zeros([self.config.vocab_size, 1], dtype=torch.bool)
         for sp_id in special_token_list:
@@ -507,10 +529,22 @@ class OmniModel(OmniPreTrainedModel):
             fake_input,
             group_index=None,  # 某种模态的编号 for MoE
         ):
-        pad_mask, sp_mask, _ = self.get_multimodal_mask(input_ids, pad_token_id, self.config.multimodal_special_token_list)
+        _infer = (not self.training and _fast_on()
+                  and not (self.config.train_multimodal_special_tokens_only and self.training))
+        self._gstar_pad_mask_only = _infer
+        try:
+            pad_mask, sp_mask, _ = self.get_multimodal_mask(input_ids, pad_token_id, self.config.multimodal_special_token_list)
+        finally:
+            self._gstar_pad_mask_only = False
         if not self.training:  # 推理支持auto map 把多模态模块输出和input_ids 统一到一个device
             multimodal_embed = multimodal_embed.to(input_ids.device)
-        if not fake_input:  # 检查多模态token 和 pad mask数量一致 （不正确的截断会导致该问题）
+        if _infer:
+            # same checks, without a host synchronization
+            if not fake_input:
+                torch._assert_async(pad_mask.sum() == multimodal_embed.shape[0], "image pad count != vision tokens")
+            else:
+                torch._assert_async(pad_mask.sum() <= 0, "unexpected image pad without vision tokens")
+        elif not fake_input:  # 检查多模态token 和 pad mask数量一致 （不正确的截断会导致该问题）
             assert pad_mask.sum() == multimodal_embed.shape[0], f"{pad_mask.sum()} vs {multimodal_embed.shape[0]}"
         else:
             assert pad_mask.sum() <= 0  # 0 vs 1
@@ -1301,7 +1335,10 @@ class OmniForCausalLM(OmniPreTrainedModel, GenerationMixin):
         else:
             vision_tokens = None
 
-        _, sp_mask, _ = self.model.get_multimodal_mask(input_ids, self.config.audio_config.audio_pad_token_id, self.config.multimodal_special_token_list)
+        _gen_fast = (getattr(self, "_gstar_skip_lm_head", False) and labels is None and not self.training
+                     and not self.config.audio_config.enable)
+        if not _gen_fast:
+            _, sp_mask, _ = self.model.get_multimodal_mask(input_ids, self.config.audio_config.audio_pad_token_id, self.config.multimodal_special_token_list)
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -1332,6 +1369,27 @@ class OmniForCausalLM(OmniPreTrainedModel, GenerationMixin):
                 assert isinstance(visual_tokens,torch.Tensor)
         else:
             visual_tokens = None
+
+        if _gen_fast:
+            # Generation: the text logits are unused (images come from image_head), and the
+            # vision path takes the last hidden state whenever the step feeds an image-pad /
+            # image-start token, else the pipeline recovers the same row from hidden_states.
+            vision_emb_for_infer = None
+            if self.config.visual_config.image_head_config.enable:
+                visual_trainable_mask = ((input_ids == self.config.visual_config.image_pad_token_id)
+                                         | (input_ids == self.config.visual_config.image_start_token_id))
+                if input_ids.shape[1] == 1 and outputs.hidden_states is not None:
+                    vision_emb_for_infer = hidden_states[:, -1, :]
+                elif bool(visual_trainable_mask.any()):
+                    vision_emb_for_infer = hidden_states[:, -1, :]
+            return OmniMMCausalLMOutputWithPast(
+                loss=None,
+                logits=None,
+                past_key_values=outputs.past_key_values,
+                hidden_states=outputs.hidden_states,
+                attentions=outputs.attentions,
+                vision_emb_for_infer=vision_emb_for_infer,
+            )
 
         # 部分可学习的special token放开lm head梯度
         special_with_loss_list = list(set(self.config.multimodal_special_token_list) - set(self.config.multimodal_special_token_no_loss_list))

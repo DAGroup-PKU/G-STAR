@@ -1,4 +1,11 @@
 import torch, fire
+try:  # fused kernel of this repository; a checkpoint sidecar without the gstar package runs the reference code
+    from gstar.vendor.model.exact_rmsnorm import fused_rmsnorm_enabled, rmsnorm_forward
+except ImportError:
+    def fused_rmsnorm_enabled():
+        return False
+
+    rmsnorm_forward = None
 from typing import Optional
 import torch.distributed
 from torch.nn import functional as F
@@ -58,7 +65,7 @@ class RMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(hidden_size))
         self.variance_epsilon = eps
 
-    def forward(self, hidden_states):
+    def _eager_forward(self, hidden_states):
         variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
 
@@ -67,6 +74,12 @@ class RMSNorm(nn.Module):
             hidden_states = hidden_states.to(self.weight.dtype)
 
         return self.weight * hidden_states
+
+    def forward(self, hidden_states):
+        if not self.training and fused_rmsnorm_enabled():
+            # bit-exact single-kernel version of _eager_forward (opt-out GSTAR_FAST_LM_KERNELS=0)
+            return rmsnorm_forward(self, hidden_states, self._eager_forward)
+        return self._eager_forward(hidden_states)
     
 
 class OmniWhisperAttention(nn.Module):

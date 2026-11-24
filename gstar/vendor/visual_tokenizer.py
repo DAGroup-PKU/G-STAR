@@ -82,9 +82,26 @@ def load_frozen_visual_tokenizer(tok_path, llm_config, device, dtype=torch.bfloa
             "config.json with the tokenizer model_type and an auto_map"
         )
     from transformers import AutoModel
-    tok = AutoModel.from_pretrained(
-        tok_path, trust_remote_code=True, torch_dtype=dtype
-    )
+    from ..fast import enabled as _fast_on, note as _note
+    tok = None
+    if _fast_on("REFINER"):
+        # the packaged implementation of the same refiner with its fast paths (gstar/vendor/refiner); the
+        # folder's own code (trust_remote_code) is the fallback and the GSTAR_FAST_REFINER=0 path
+        from . import refiner as _refiner
+        ok, why = _refiner.check(tok_path)
+        if ok:
+            try:
+                tok = _refiner.load_refiner(tok_path, dtype)
+            except Exception as exc:
+                _note(f"packaged refiner implementation not used ({type(exc).__name__}: {str(exc)[:200]}); "
+                      "loading the folder's own code")
+                tok = None
+        else:
+            _note(f"packaged refiner implementation not used for {tok_path}: {why}; loading the folder's own code")
+    if tok is None:
+        tok = AutoModel.from_pretrained(
+            tok_path, trust_remote_code=True, torch_dtype=dtype
+        )
     # External tokenizers may keep bf16 weights with fp32 intermediates, which
     # needs a bf16 autocast around encode/decode.  The unified RepAR refiner
     # manages autocast internally; an outer autocast would leak into its

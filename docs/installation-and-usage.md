@@ -22,6 +22,7 @@ weights on NVIDIA H100 GPUs.
 - [Prompt enhancement](#prompt-enhancement)
 - [Edit an image](#edit-an-image)
 - [Verified inference](#verified-inference)
+- [Fast inference paths](#fast-inference-paths)
 - [Image heads](#image-heads)
 - [Data](#data): [records](#records) · [image descriptors](#image-descriptors) · [manifests](#manifests) · [building data](#building-data)
 - [Training](#training)
@@ -55,8 +56,11 @@ PyTorch and FlashAttention must match the CUDA runtime and GPU on the machine.
 
 The text-to-image export is on Hugging Face at
 [DAGroup-PKU/G-star](https://huggingface.co/DAGroup-PKU/G-star): its root is the
-generation model (`gstar-t2i/` below) and its `refiner/` folder is the matching
-refiner (`gstar-t2i-refiner/` below). The editing exports are not published yet.
+generation model (`gstar-t2i/` below) and its `oneStep-SR2x_refiner/` folder is
+the default matching refiner (`gstar-t2i-refiner/` below): a distilled SR2x
+refiner that decodes with a single DiT evaluation. The 52-step `refiner/` folder
+of the same export is a drop-in alternative. The editing exports are not
+published yet.
 
 Download the **complete Hugging Face exports** accompanying the model release
 and keep their directory contents intact. The local folder names below are
@@ -65,14 +69,17 @@ used by the examples:
 ```text
 weights/
   gstar-t2i/             # Full generation model: backbone, bridge and DSpark head
-  gstar-t2i-refiner/     # Matching g16 SR2x encoder/decoder export
+  gstar-t2i-refiner/     # Matching g16 SR2x encoder/decoder export (oneStep-SR2x_refiner/ or refiner/)
+  gstar-flash-1.7b/      # G-STAR-Flash-1.7B generation model (gstar-flash-1.7b/)
+  gstar-flash-1.7b-refiner/  # Its matching g8 reconstruction refiner
   gstar-edit/            # Full editing SFT model: backbone, bridge and DSpark head
   gstar-edit-refiner/    # Matching g16 reconstruction encoder/decoder export
 ```
 
 | Task | Model | Matching visual export | Prompt format |
 | --- | --- | --- | --- |
-| Text-to-image | Qwen3-8B, DSpark, 16 codebooks | g16 SR2x refiner supplied with that model | Pretrain |
+| Text-to-image | Qwen3-8B, DSpark, 16 codebooks | g16 one-step SR2x refiner supplied with that model (`oneStep-SR2x_refiner/`; the 52-step `refiner/` is a drop-in alternative) | Pretrain |
+| Text-to-image (Flash) | Qwen3-1.7B, DSpark, 8 codebooks, 2 x 2 spatial merge | g8 reconstruction refiner `gstar-flash-1.7b-refiner/` | SFT |
 | Image editing | Qwen3-8B editing SFT, DSpark, 16 codebooks | g16 reconstruction refiner supplied with that model | SFT |
 
 Keep the model's `config.json`, text tokenizer files, all weight shards and
@@ -99,7 +106,9 @@ export EDIT_REFINER="$PWD/weights/gstar-edit-refiner"
 
 This example uses the verified g16 pretrain generation configuration: CFG 2.4,
 top-k 4096, top-p 0.75 and temperature 0.7. It generates a 32 x 32 grid of g16 image codes for a 1024 x 1024 target,
-then uses the matching SR2x refiner to produce a native 2048 image.
+then uses the matching one-step SR2x refiner (a single DiT evaluation) to produce
+a native 2048 image. To use the 52-step SR2x refiner instead, pass its folder
+(`refiner/` in the Hugging Face repository) as `--visual-tokenizer`.
 
 ```bash
 OMNI_DISABLE_WAVELET_COLOR_FIX=1 python -m gstar.infer \
@@ -126,6 +135,27 @@ an externally rewritten prompt. `--prompt-mode pretrain` omits SFT roles even
 if the checkpoint includes a role configuration. For a generation checkpoint
 trained with SFT roles, select `--prompt-mode sft` instead. The default `auto`
 uses SFT roles when `role_config.json` is present.
+
+### G-STAR-Flash-1.7B
+
+G-STAR-Flash-1.7B is in the same Hugging Face repository: `gstar-flash-1.7b/`
+is the model and `gstar-flash-1.7b-refiner/` its matching g8 reconstruction
+refiner (1024 output). It uses SFT roles and CFG 1.8:
+
+```bash
+export FLASH_MODEL="$PWD/weights/gstar-flash-1.7b"
+export FLASH_REFINER="$PWD/weights/gstar-flash-1.7b-refiner"
+python -m gstar.infer \
+  --task t2i --model "$FLASH_MODEL" --visual-tokenizer "$FLASH_REFINER" \
+  --prompt-mode sft \
+  --prompt 'A golden retriever lying on a wooden floor, looking up at its owner, warm morning sunlight, realistic photography.' \
+  --height 1024 --width 1024 --cfg 1.8 \
+  --top-k 4096 --top-p 0.75 --temperature 0.7 --seed 20260915 \
+  --output outputs/flash_1024.png
+```
+
+The g8 and g16 refiners are not interchangeable, so Flash has no one-step
+refiner yet.
 
 ## Prompt enhancement
 
@@ -198,11 +228,69 @@ The model backbone, bridge, image head and generation pipeline run from this
 repository. Weights are loaded into the local implementation with strict
 loading checks; missing or incompatible model weights raise an error.
 The standalone visual export loads its bundled implementation through
-`trust_remote_code=True`.
+`trust_remote_code=True`, except for the released refiner exports, which run
+the equivalent packaged implementation with its fast paths (see
+[Fast inference paths](#fast-inference-paths)).
 
 These checks establish that inference runs and produces images. Fine details
 of edited subjects can be redrawn, and identical seeds do not guarantee exact
 token or pixel equality across hardware and inference configurations.
+
+## Fast inference paths
+
+Text-to-image inference uses faster implementations by default (the CUDA
+extensions among them need a GPU of compute capability 9.0, e.g. H100 / H200);
+when a requirement does not hold, each one falls back to the reference code on
+its own.
+
+- Language model and image head: CUDA graphs of the decode step and of the
+  head's per-position sampling, fused kernels and replicas of cuBLAS's decode
+  GEMMs. They reproduce the reference arithmetic bit for bit (same codes);
+  every replica is checked against the reference op at its first use.
+- Refiner (`gstar/vendor/refiner`): the packaged implementation of the
+  released refiner exports (G-STAR's one-step and 52-step SR2x refiners,
+  G-STAR-Flash's g8 refiner) with their decode samplers, a single-sample DiT
+  path, FlashInfer's sm90 attention, large-tile cuBLASLt GEMMs and fused norm
+  kernels. It differs from the export's own code only in floating-point
+  rounding. It is used only for a folder whose code matches a released export
+  and whose config selects a sampler verified for that code; any other refiner
+  folder runs its own code.
+
+Seconds per image on one NVIDIA H200 (batch 1, BF16, model loaded; the
+reference is the implementation without these fast paths, which
+`GSTAR_FAST=0` restores):
+
+| Model and refiner | Reference | Fast | Speedup |
+| --- | ---: | ---: | ---: |
+| G-STAR + one-step SR2x refiner (2048 output) | 65.1 | 10.5 | 6.2x |
+| G-STAR + 52-step SR2x refiner (2048 output) | 138.6 | 50.8 | 2.7x |
+| G-STAR-Flash-1.7B + g8 refiner (1024 output) | 33.2 | 12.2 | 2.7x |
+
+The image codes are identical to the reference; the refiner output differs
+only by floating-point rounding (PSNR about 57–59 dB against the reference).
+To turn parts off:
+
+| Variable | Effect |
+| --- | --- |
+| `GSTAR_FAST=0` | everything off: the reference implementation |
+| `GSTAR_FAST_LM_GRAPH=0` | no CUDA graphs in the language model / image head |
+| `GSTAR_FAST_LM_KERNELS=0` | no fused language-model / sampling kernels |
+| `GSTAR_FAST_LM_GEMM=0` | cuBLAS for the decode GEMMs |
+| `GSTAR_FAST_LM_ATTN=0` | no fused decode / head attention kernels |
+| `GSTAR_FAST_REFINER=0` | the refiner folder's own code (`trust_remote_code`) |
+| `GSTAR_FAST_REFINER_ATTN=0` | flash-attn 2 in the refiner |
+| `GSTAR_FAST_REFINER_GEMM=0` | cuBLAS's default kernels for the refiner linears |
+| `GSTAR_FAST_REFINER_KERNELS=0` | no fused refiner norm / RoPE kernels, ATen's GroupNorm in the VAE |
+
+The FlashInfer attention is compiled from FlashInfer's and CUTLASS's headers
+(with `nvcc` matching PyTorch's CUDA). Install the headers with
+`python -m pip install --no-deps flashinfer-python==0.6.7.post3` (only its
+bundled headers are used; nothing is imported), or point `FLASHINFER_INCLUDE_DIR`
+and `CUTLASS_INCLUDE_DIR` at the two `include` directories; without them the
+refiner uses a Triton attention kernel. The CUDA extensions are compiled on the
+first run on a machine (about two and a half minutes) into torch's extension
+directory (`TORCH_EXTENSIONS_DIR`, default `~/.cache/torch_extensions`) and
+loaded from there afterwards.
 
 ## Image heads
 

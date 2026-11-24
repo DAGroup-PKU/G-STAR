@@ -1,6 +1,28 @@
 import os
 
 import torch
+try:  # fast paths of this repository; a checkpoint sidecar without the gstar package runs the reference code
+    from gstar.vendor.model.exact_sampling import cfg_temperature, fast_sampling_enabled, match_warpers, topk_mask
+    from gstar.vendor.model.exact_sampling import lean2_enabled, topk_mask_lean, top_p_lean, sort1_enabled, topk_topp_sort1
+    from gstar.vendor.model.exact_fused2 import add_rmsnorm, lm_fuse3_enabled, next_slot_input
+    from gstar.vendor.model.exact_decode_attn import lm_lean_enabled
+    from gstar.vendor.model.exact_gemm import head_linear, head_qkv, lm_tgemm3_enabled
+    from gstar.vendor.model.exact_xattn import hattn_enabled, head_attn, sample2_enabled, softmax_div_argmax
+except ImportError:
+    def _off():
+        return False
+
+    def match_warpers(logits_processor):
+        return None
+
+    fast_sampling_enabled = lean2_enabled = sort1_enabled = lm_fuse3_enabled = _off
+    lm_lean_enabled = lm_tgemm3_enabled = hattn_enabled = sample2_enabled = _off
+    cfg_temperature = topk_mask = topk_mask_lean = top_p_lean = topk_topp_sort1 = None
+    add_rmsnorm = next_slot_input = head_linear = head_qkv = head_attn = softmax_div_argmax = None
+
+
+def qx_dims(layer):
+    return layer.dims if layer.head_dim == 128 else -1
 import torch.utils.checkpoint
 from torch import nn
 
@@ -328,6 +350,9 @@ class _GroupedCausalTransformerLayer(nn.Module):
     def _ffn(self, x):
         return self.fc2(torch.nn.functional.gelu(self.fc1(x)))
 
+    def _ffn_from_normed(self, h):
+        return self.fc2(torch.nn.functional.gelu(self.fc1(h)))
+
     def forward(self, x):
         residual = x
         q, k, v = self._qkv(self.norm1(x))
@@ -536,6 +561,31 @@ class _ExplicitGroupedHeadBase(nn.Module):
         if rows % branches:
             raise ValueError("CFG rows must be divisible by the number of branches")
         half = rows // branches
+        warpers = match_warpers(logits_processor) if (fast_sampling_enabled() and branches == 2
+                                                      and image_cfg_scale is None) else None
+        if warpers is not None and logits.is_cuda:
+            # bit-exact: CFG + temperature in one kernel, top-k threshold by kthvalue (exact_sampling)
+            temperature, k_warper, p_warper = warpers
+            scores = cfg_temperature(logits, self.codebook_sizes[level], cfg_scale, temperature)
+            if lean2_enabled() and sort1_enabled():
+                scores = topk_topp_sort1(scores, k_warper, p_warper)       # one sort for top-k and top-p
+            elif lean2_enabled():
+                scores = top_p_lean(topk_mask_lean(scores, k_warper), p_warper)   # same values, fewer kernels
+            else:
+                scores = topk_mask(scores, k_warper)
+                scores = p_warper(None, scores)
+            if do_sample and lm_lean_enabled():
+                probs = torch.softmax(scores, dim=-1)
+                # torch.multinomial(probs, 1) is exactly this (its n_sample == 1 path) plus validity asserts
+                q = torch.empty_like(probs).exponential_(1)
+                torch.div(probs, q, out=q)
+                sampled = torch.argmax(q, dim=-1, keepdim=True).squeeze(1)
+            elif do_sample:
+                probs = torch.softmax(scores, dim=-1)
+                sampled = torch.multinomial(probs, num_samples=1).squeeze(1)
+            else:
+                sampled = scores.argmax(dim=-1)
+            return sampled.repeat((branches,))
         scores = logits[:, :self.codebook_sizes[level]].float()
         if image_cfg_scale is not None:
             full, image, empty = scores.chunk(3, dim=0)
@@ -558,9 +608,94 @@ class _ExplicitGroupedHeadBase(nn.Module):
             sampled = sampled.repeat((branches,))
         return sampled
 
+    def _fast_sample_half(self, logits, level, cfg_scale, do_sample, logits_processor):
+        """The fused bit-exact sampling of the cond half (ids before the CFG repeat)."""
+        temperature, k_warper, p_warper = match_warpers(logits_processor)
+        scores = cfg_temperature(logits, self.codebook_sizes[level], cfg_scale, temperature)
+        if sort1_enabled():
+            scores = topk_topp_sort1(scores, k_warper, p_warper)       # one sort for top-k and top-p
+        else:
+            scores = top_p_lean(topk_mask_lean(scores, k_warper), p_warper)
+        if (sample2_enabled() and scores.dim() == 2 and scores.shape[0] == 1 and scores.is_contiguous()
+                and scores.dtype == torch.float32 and scores.data_ptr() % 16 == 0):
+            # same RNG draw (exponential_ on a tensor of the same shape / dtype), then softmax / div / argmax fused
+            q = torch.empty_like(scores).exponential_(1)
+            return softmax_div_argmax(scores, q)
+        probs = torch.softmax(scores, dim=-1)
+        q = torch.empty_like(probs).exponential_(1)
+        torch.div(probs, q, out=q)
+        return torch.argmax(q, dim=-1, keepdim=True).squeeze(1)
+
+    def _lean_generate_ok(self, cfg_scale, do_sample, logits_processor, image_cfg_scale):
+        return (lm_fuse3_enabled() and fast_sampling_enabled() and lm_lean_enabled() and lean2_enabled()
+                and do_sample and image_cfg_scale is None and cfg_scale != 1.0 and len(self.causal_layers) == 1
+                and self.causal_layers[0].stable_attention and match_warpers(logits_processor) is not None)
+
+    def _generate_causal_lean(self, x, base_hidden, *, cfg_scale, do_sample, logits_processor):
+        """_generate_causal with the same ops on the same values and fewer kernels: fp32 K/V
+        caches written row by row (cuBLAS on their views == on the cat'd copies), residual add + RMSNorm fused,
+        and one kernel for the sampled id -> tokens / next slot's input_proj input."""
+        rows = x.shape[0]
+        layer = self.causal_layers[0]
+        H, Dh, D = layer.num_heads, layer.head_dim, self.transformer_dims
+        tokens = torch.zeros(rows, self.group_count, dtype=torch.long, device=x.device)
+        K32 = torch.empty(rows, H, self.group_count, Dh, dtype=torch.float32, device=x.device)
+        V32 = torch.empty_like(K32)
+        inp = torch.cat([base_hidden[:, 0, :], self.bos_embed.weight[0].view(1, -1).expand(rows, -1)], dim=-1)
+        scale = layer.head_dim ** -0.5
+        tg3 = lm_tgemm3_enabled()          # bit-exact replicas of the head's cublasLt GEMMs
+        hat = tg3 and hattn_enabled() and layer.num_heads * layer.head_dim == qx_dims(layer) and self.group_count <= 16
+        shape = (rows, 1, layer.num_heads, layer.head_dim)
+        for slot in range(self.group_count):
+            if tg3:
+                step = head_linear(inp, self.input_proj.weight, self.input_proj.bias).unsqueeze(1)
+                residual = step
+                qx, kx, vx = head_qkv(layer.norm1(step), layer.q_proj.weight, layer.q_proj.bias,
+                                      layer.k_proj.weight, layer.k_proj.bias, layer.v_proj.weight,
+                                      layer.v_proj.bias)
+                q, k_new, v_new = (t.view(shape).transpose(1, 2) for t in (qx, kx, vx))
+                if hat:
+                    def _ref(q=q, k_new=k_new, v_new=v_new, slot=slot):
+                        K32[:, :, slot:slot + 1].copy_(k_new)
+                        V32[:, :, slot:slot + 1].copy_(v_new)
+                        with torch.autocast(device_type=q.device.type, enabled=False):
+                            sc_ = torch.matmul(q.float(), K32[:, :, :slot + 1].transpose(-2, -1)) * scale
+                            at_ = torch.matmul(torch.softmax(sc_, dim=-1), V32[:, :, :slot + 1]).to(q.dtype)
+                        return at_.transpose(1, 2).reshape(rows, 1, layer.dims)
+                    attn = head_attn(qx, kx, vx, K32, V32, slot, scale, _ref)
+            else:
+                step = self.input_proj(inp).unsqueeze(1)
+                residual = step
+                q, k_new, v_new = layer._qkv(layer.norm1(step))
+            if not (tg3 and hat):
+                K32[:, :, slot:slot + 1].copy_(k_new)
+                V32[:, :, slot:slot + 1].copy_(v_new)
+                with torch.autocast(device_type=q.device.type, enabled=False):
+                    scores = torch.matmul(q.float(), K32[:, :, :slot + 1].transpose(-2, -1))
+                    scores = scores * scale
+                    attn = torch.matmul(torch.softmax(scores, dim=-1), V32[:, :, :slot + 1]).to(q.dtype)
+                attn = attn.transpose(1, 2).reshape(rows, 1, layer.dims)
+            if tg3:
+                xx, h2 = add_rmsnorm(residual, head_linear(attn, layer.out_proj.weight, layer.out_proj.bias),
+                                     layer.norm2)
+                f = layer.fc2(torch.nn.functional.gelu(head_linear(h2, layer.fc1.weight, layer.fc1.bias)))
+                _, hn = add_rmsnorm(xx, f, self.headnorm)
+            else:
+                xx, h2 = add_rmsnorm(residual, layer.out_proj(attn), layer.norm2)
+                _, hn = add_rmsnorm(xx, layer._ffn_from_normed(h2), self.headnorm)
+            level = slot % self.depth
+            logits = self.heads[level](hn.view(rows, -1))
+            sampled = self._fast_sample_half(logits, level, cfg_scale, do_sample, logits_processor)
+            next_slot_input(sampled, tokens, slot, self.token_emb_layers[(slot) % self.depth].weight,
+                            base_hidden, inp, slot + 1 < self.group_count)
+        return tokens.view(rows, self.mms_unit, self.depth).reshape(rows * self.mms_unit, self.depth)
+
     def _generate_causal(self, x, base_hidden, *, cfg_scale=1.0,
                          do_sample=True, logits_processor=None,
                          vision_sequences=None, image_cfg_scale=None, **_kwargs):
+        if self._lean_generate_ok(cfg_scale, do_sample, logits_processor, image_cfg_scale) and x.shape[0] == 2:
+            return self._generate_causal_lean(x, base_hidden, cfg_scale=cfg_scale, do_sample=do_sample,
+                                              logits_processor=logits_processor)
         rows = x.shape[0]
         tokens = torch.zeros(rows, self.group_count, dtype=torch.long, device=x.device)
         caches = [None] * len(self.causal_layers)
