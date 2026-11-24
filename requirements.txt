@@ -12,6 +12,7 @@ Pillow>=10
 json5
 einops
 omegaconf
+pyyaml
 timm
 diffusers
 opencv-python-headless

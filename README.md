@@ -161,20 +161,28 @@ See the **[Installation & Usage guide](docs/installation-and-usage.md)** for dep
 | Pretrain and fine-tune | [Pretraining & SFT](docs/installation-and-usage.md#training) |
 | Run the checks | [Tests](docs/installation-and-usage.md#tests) |
 
-> 💡 **Tip:** We recommend enhancing your prompt with [Qwen-Image-2.1-PE](https://huggingface.co/Qwen/Qwen-Image-2.1-PE-T2I) first — just add `--prompt-enhance` to `gstar.infer` (see [Prompt enhancement](docs/installation-and-usage.md#prompt-enhancement)).
+> 💡 **Tip:** We recommend enhancing your prompt with [Qwen-Image-2.1-PE](https://huggingface.co/Qwen/Qwen-Image-2.1-PE-T2I) first — just add `--prompt-enhance` to `inference.py` (see [Prompt enhancement](docs/installation-and-usage.md#prompt-enhancement)).
 
 > Inference runs on a single CUDA GPU (verified on an 80 GB H100). Model weights are distributed separately: always pair each checkpoint with the visual refiner released with it, since g8 and g16 exports are incompatible.
 
 ## 🗂️ Repository Structure
 
 ```text
-gstar/          Weight init, data pipeline, training, inference / editing and periodic evaluation
-gstar/vendor/   Backbone modeling, image heads, multimodal processor and KV-cache generation
-configs/        Pretrain / SFT recipes, image-head model configs, DeepSpeed and role configs
-scripts/        torchrun launcher for single- and multi-node training
-tools/          Data preparation and data-pipeline checks
-tests/          Unit tests and a two-GPU distributed smoke test
-docs/           Project page and the installation & usage guide
+train.py               Pretraining and SFT (YAML config + command-line overrides)
+validate.py            Validation loss of checkpoints on held-out data
+inference.py           Text-to-image, editing, image-to-text; --prompt-file for many prompts
+init_checkpoint.py     New checkpoint from a Qwen backbone, or a fresh image head
+distributed_train.sh   torchrun launcher for single- and multi-node training
+gstar/models/          Architecture registry, create_model, checkpoint loading (configs/: architectures)
+gstar/data/            Weighted JSONL sources, multimodal processing, packing and collation
+gstar/optim/           AdamW with the image-head learning rate; gstar/scheduler/: LR schedules
+gstar/trainer/         Trainer subclass and periodic image sampling
+gstar/generation/      Text-to-image, editing and prompt enhancement
+gstar/vendor/          Backbone modeling, image heads, refiner, multimodal processor and KV-cache generation
+configs/               Pretrain / SFT configs, DeepSpeed and role configs
+tools/                 Data preparation and data-pipeline checks
+tests/                 Unit tests and a two-GPU distributed smoke test
+docs/                  Project page and the installation & usage guide
 ```
 
 ## 🙏 Acknowledgement

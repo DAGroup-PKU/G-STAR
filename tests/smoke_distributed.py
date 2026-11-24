@@ -12,9 +12,9 @@ import torch.distributed as dist
 from torch.utils.data import IterableDataset
 from transformers import AutoTokenizer, TrainingArguments
 
-from gstar.config import MODEL_CODE, ROOT
 from gstar.data import collate
-from gstar.train import ImageTrainer
+from gstar.trainer import ImageTrainer
+from gstar.utils.config import MODEL_CODE, ROOT
 from gstar.vendor.model.modeling_omni import OmniForCausalLM
 from test_runtime import tiny_config
 

@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from gstar.config import ROOT, read_json
+from gstar.utils.config import ROOT, read_json
 from gstar.vendor.model.configuration_omni import OmniConfig
 from gstar.vendor.model.image_head import _ExplicitGroupedHeadBase, OmniImageHead
 
@@ -52,7 +52,7 @@ class EditingGuidanceTests(unittest.TestCase):
         self.assertEqual(len(set(tokens.tolist())), 1)
 
     def test_public_dspark_head_accepts_and_shares_image_guidance(self):
-        raw = read_json(ROOT / "configs/models/gstar_dspark.json")
+        raw = read_json(ROOT / "gstar/models/configs/gstar_dspark.json")
         raw["hidden_size"] = 128
         raw["visual_quantizer_config"].update(codebook_sizes=[8, 8], depth=2, pq_num_groups=2)
         raw["visual_config"]["image_head_config"].update(

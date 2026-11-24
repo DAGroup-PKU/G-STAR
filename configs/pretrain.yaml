@@ -1,0 +1,42 @@
+# G-STAR pretraining (python train.py -c configs/pretrain.yaml --model ... --visual-tokenizer ... --output ...)
+# Keys are train.py's argument names; command-line flags override them. Relative paths of data, roles and
+# deepspeed are resolved against the repository root.
+
+# dataset
+stage: pretrain
+data: configs/data/pretrain.json
+roles: configs/roles.json
+max_length: 8192
+packing: true
+seed: 42
+
+# optimizer: AdamW, 10x learning rate for the image head, the full embedding table trains
+lr: 1.0e-4
+head_lr_scale: 10.0
+opt_betas: [0.9, 0.96]
+weight_decay: 0.05
+
+# schedule: linear warmup, cosine decay to 10% of the peak learning rate
+sched: cosine_with_min_lr
+min_lr_rate: 0.1
+warmup_steps: 1000
+max_steps: 200000
+
+# training
+batch_size: 1
+grad_accum_steps: 1
+bf16: true
+grad_checkpointing: true
+deepspeed: configs/deepspeed.json
+
+# logging, checkpoints, samples
+output: outputs/pretrain
+log_interval: 10
+log_to: tensorboard
+checkpoint_interval: 1000
+checkpoint_hist: 3
+save_safetensors: false
+sample_every: 1000
+sample_image_size: 256
+sample_cfg: 1.0
+sample_prompts: ["A red apple on a wooden table."]

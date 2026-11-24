@@ -9,18 +9,18 @@ from types import SimpleNamespace
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
 
-from gstar.config import MODEL_CODE, ROOT, read_json
 from gstar.data import PackedDataset, collate, conversation, weighted_rows
-from gstar.model import save_sidecars
+from gstar.models import model_config, save_sidecars
+from gstar.utils.config import MODEL_CODE, ROOT, read_json
 from gstar.vendor.model.configuration_omni import OmniConfig
 from gstar.vendor.model.modeling_omni import OmniForCausalLM
 from gstar.vendor.model.processor_omni import OmniMMProcessor, OmniProcessorOutput
 from gstar.vendor.generation import generate_t2i_batch
-from gstar.train import ImageTrainer
+from gstar.trainer import ImageTrainer
 
 
 def tiny_config(name):
-    cfg = read_json(ROOT / ("configs/models/gstar_" + name + ".json"))
+    cfg = model_config("gstar_" + name)
     cfg.update(hidden_size=128, intermediate_size=256, num_hidden_layers=1,
                num_attention_heads=1, num_key_value_heads=1, max_window_layers=1)
     head = cfg["visual_config"]["image_head_config"]

@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-config", default="configs/models/gstar_ar.json")
+    parser.add_argument("--model-config", default="gstar_ar",
+                        help="registered architecture (gstar_ar, gstar_dspark, gstar_dspark64) or config JSON")
     parser.add_argument("--data", help="Manifest (.json/.json5) or a single .jsonl file")
     parser.add_argument("--stage", choices=("pretrain", "sft"), default="pretrain")
     parser.add_argument("--samples", type=int, default=2)
@@ -24,11 +25,12 @@ def main():
         parser.error("pass --data or --synthetic")
     import torch
     from transformers import AutoTokenizer
-    from gstar.config import MODEL_CODE, ROOT, read_json, validate_geometry
+    from gstar.models import model_config
+    from gstar.utils.config import MODEL_CODE, ROOT, read_json
     from gstar.data import PackedDataset, sources, collate, preflight_images
     from gstar.vendor.model.configuration_omni import OmniConfig
     from gstar.vendor.model.processor_omni import OmniMMProcessor
-    cfg = OmniConfig(**validate_geometry(read_json(args.model_config)))
+    cfg = OmniConfig(**model_config(args.model_config))
     tokenizer = AutoTokenizer.from_pretrained(str(MODEL_CODE), model_max_length=8192)
     processor = OmniMMProcessor(tokenizer, cfg, training=True, relative_path="")
     temporary = None

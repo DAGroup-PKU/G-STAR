@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 outputs/
-data/
+/data/
 *.egg-info/
 .pytest_cache/
 .claude/
