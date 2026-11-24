@@ -16,7 +16,11 @@ from dataclasses import dataclass
 
 import torch
 import torch.distributed
-from ...fast import enabled as _fast_on
+try:  # the repository's switches; loaded as a checkpoint sidecar without the gstar package: reference code only
+    from gstar.fast import enabled as _fast_on
+except ImportError:
+    def _fast_on(part=None):
+        return False
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss

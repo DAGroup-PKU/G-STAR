@@ -63,7 +63,10 @@ def match_warpers(logits_processor):
     """(temperature, top_k, topp_warper) when the processor list is exactly Temperature, TopK, TopP."""
     if logits_processor is None:
         return None
-    procs = list(logits_processor)
+    try:
+        procs = list(logits_processor)
+    except TypeError:          # a single callable, not a LogitsProcessorList: the generic path
+        return None
     names = [type(p).__name__ for p in procs]
     if names != ["TemperatureLogitsWarper", "TopKLogitsWarper", "TopPLogitsWarper"]:
         return None

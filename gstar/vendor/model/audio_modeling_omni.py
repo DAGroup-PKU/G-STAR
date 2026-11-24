@@ -1,5 +1,11 @@
 import torch, fire
-from .exact_rmsnorm import fused_rmsnorm_enabled, rmsnorm_forward
+try:  # fused kernel of this repository; a checkpoint sidecar without the gstar package runs the reference code
+    from gstar.vendor.model.exact_rmsnorm import fused_rmsnorm_enabled, rmsnorm_forward
+except ImportError:
+    def fused_rmsnorm_enabled():
+        return False
+
+    rmsnorm_forward = None
 from typing import Optional
 import torch.distributed
 from torch.nn import functional as F

@@ -1,12 +1,24 @@
 import os
 
 import torch
-from .exact_sampling import cfg_temperature, fast_sampling_enabled, match_warpers, topk_mask
-from .exact_sampling import lean2_enabled, topk_mask_lean, top_p_lean, sort1_enabled, topk_topp_sort1
-from .exact_fused2 import add_rmsnorm, lm_fuse3_enabled, next_slot_input
-from .exact_decode_attn import lm_lean_enabled
-from .exact_gemm import head_linear, head_qkv, lm_tgemm3_enabled
-from .exact_xattn import hattn_enabled, head_attn, sample2_enabled, softmax_div_argmax
+try:  # fast paths of this repository; a checkpoint sidecar without the gstar package runs the reference code
+    from gstar.vendor.model.exact_sampling import cfg_temperature, fast_sampling_enabled, match_warpers, topk_mask
+    from gstar.vendor.model.exact_sampling import lean2_enabled, topk_mask_lean, top_p_lean, sort1_enabled, topk_topp_sort1
+    from gstar.vendor.model.exact_fused2 import add_rmsnorm, lm_fuse3_enabled, next_slot_input
+    from gstar.vendor.model.exact_decode_attn import lm_lean_enabled
+    from gstar.vendor.model.exact_gemm import head_linear, head_qkv, lm_tgemm3_enabled
+    from gstar.vendor.model.exact_xattn import hattn_enabled, head_attn, sample2_enabled, softmax_div_argmax
+except ImportError:
+    def _off():
+        return False
+
+    def match_warpers(logits_processor):
+        return None
+
+    fast_sampling_enabled = lean2_enabled = sort1_enabled = lm_fuse3_enabled = _off
+    lm_lean_enabled = lm_tgemm3_enabled = hattn_enabled = sample2_enabled = _off
+    cfg_temperature = topk_mask = topk_mask_lean = top_p_lean = topk_topp_sort1 = None
+    add_rmsnorm = next_slot_input = head_linear = head_qkv = head_attn = softmax_div_argmax = None
 
 
 def qx_dims(layer):
