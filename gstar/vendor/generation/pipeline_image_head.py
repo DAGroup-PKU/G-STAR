@@ -2,6 +2,7 @@ import inspect
 import sys
 import copy
 import os
+from ...fast import enabled as _fast_on, sm90 as _sm90
 import torch
 import inspect
 import warnings
@@ -45,6 +46,7 @@ try:
 except ImportError:
     QUANT_BACKEND_CLASSES_MAPPING = None
     QuantizedCacheConfig = None
+from .decode_graph import DecodeGraphRunner, llm_graph_enabled, runner_supported
 from .rope2d import (
     MRoPERotaryEmbedding,
     apply_multimodal_rotary_pos_emb,
@@ -111,6 +113,92 @@ class GenerationImageHeadOutput(ModelOutput):
     past_key_values: Optional[Tuple[Tuple[Tuple[torch.FloatTensor]]]] = None
     vision_sequences: Optional[torch.LongTensor] = None
     vision_embeddings: Optional[Tuple[torch.FloatTensor]] = None
+
+
+
+# ---------------------------------------------------------------------------
+# CUDA graph of the image head's per-position sampling (on by default; opt-out GSTAR_FAST_LM_GRAPH=0).
+#
+# image_head.sample() runs the same ~2,300 small kernels for every image position
+# (DSpark backbone, 16 cached causal steps, CFG + temperature/top-k/top-p warpers and
+# torch.multinomial on torch's CUDA generator).  Replaying them from one CUDA graph runs
+# exactly the same kernels on the same inputs: the philox seed/offset of every random
+# draw is taken from the generator at replay time with the same per-kernel increments,
+# so the draws equal the eager ones bit for bit.  The graph is only used for inputs whose
+# layout matches the capture (contiguous [rows, hidden] bf16) and for logits processors
+# that ignore the token history (the HF temperature / top-k / top-p warpers).
+# ---------------------------------------------------------------------------
+_HEAD_GRAPH_SAFE_PROCESSORS = ("TemperatureLogitsWarper", "TopKLogitsWarper", "TopPLogitsWarper")
+
+
+def _head_graph_enabled():
+    return _fast_on("LM_GRAPH")
+
+
+class _HeadSampleGraph:
+    def __init__(self):
+        self.key = None
+        self.graph = None
+        self.static_x = None
+        self.static_out = None
+
+    @staticmethod
+    def processors_key(logits_processor):
+        if logits_processor is None:
+            return ()
+        key = []
+        for proc in logits_processor:
+            name = type(proc).__name__
+            if name not in _HEAD_GRAPH_SAFE_PROCESSORS:
+                return None
+            key.append((name, getattr(proc, "temperature", None), getattr(proc, "top_k", None),
+                        getattr(proc, "top_p", None), getattr(proc, "filter_value", None),
+                        getattr(proc, "min_tokens_to_keep", None)))
+        return tuple(key)
+
+    def run(self, head, x, emb_layers, *, logits_processor, **kwargs):
+        """Returns the sampled ids, or None when the call is not graph-eligible."""
+        if not (x.is_cuda and x.dim() == 2 and x.is_contiguous()):
+            return None
+        pkey = self.processors_key(logits_processor)
+        if pkey is None:
+            return None
+        key = (tuple(x.shape), x.dtype, x.device, pkey, tuple(sorted(kwargs.items())))
+        if key != self.key:
+            self._capture(head, x, emb_layers, logits_processor, kwargs)
+            self.key = key
+        self.static_x.copy_(x)
+        self.graph.replay()
+        return self.static_out.clone()
+
+    def _capture(self, head, x, emb_layers, logits_processor, kwargs):
+        self.graph = None
+        rng = torch.cuda.get_rng_state(x.device)
+        self.static_x = x.detach().clone()
+
+        def body():
+            return head.sample(self.static_x, emb_layers, logits_processor=logits_processor,
+                               vision_sequences=None, **kwargs)
+        side = torch.cuda.Stream(device=x.device)
+        side.wait_stream(torch.cuda.current_stream(x.device))
+        with torch.cuda.stream(side):
+            for _ in range(2):           # lazy library initialization outside the capture
+                body()
+        torch.cuda.current_stream(x.device).wait_stream(side)
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            self.static_out = body()
+        torch.cuda.synchronize(x.device)
+        # warmup consumed random numbers: restore the generator so the first replay
+        # draws exactly what the eager call would have drawn
+        torch.cuda.set_rng_state(rng, x.device)
+        self.graph = graph
+
+@dataclass
+class OmniStepOutput(ModelOutput):
+    """What _sample reads from a decode forward when the graph runner computed it."""
+    vision_emb_for_infer: Optional[torch.FloatTensor] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
 
 
 logger = logging.get_logger(__name__)
@@ -546,10 +634,28 @@ class GenerationImageHead(GenerationMixin):
             token_w = images_grid[0][2] // _merger_total
             tokens_in_row = torch.zeros(batch_size, dtype=torch.long, device=input_ids.device)
 
-        while self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device,) and cur_len < max_length:
+        # Fast path (no host synchronization): with finish_until_max_new_tokens every row
+        # stays unfinished until max_new_tokens, so the per-row newline counters are all
+        # equal and can be kept on the host.  Same values, same op sequence on the GPU.
+        _static_rows = bool(finish_until_max_new_tokens) and not synced_gpus and _fast_on()
+        _host_tokens_in_row = 0
+        sig = inspect.signature(self.forward)
+        has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        has_pos_3d = 'position_ids_3d' in sig.parameters
+        # piecewise CUDA-graph decode (decode_graph.py) once the eager prefill has filled the KV cache
+        _use_runner = (llm_graph_enabled() and _static_rows and runner_supported(self)
+                       and not output_attentions and not (streamer is not None)
+                       and getattr(self.config, "visual_config", None) is not None)
+        _runner = None
+        _prev_skip_lm_head = getattr(self, "_gstar_skip_lm_head", False)
+        self._gstar_skip_lm_head = _fast_on()   # the text logits are never used by image generation
+        while (True if _static_rows else self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device,)) and cur_len < max_length:
             # ===== 判断这一 step 是否是 newline step（全 batch 同步换行）=====
             is_newline_step = False
-            if (
+            if _static_rows:
+                if tokens_in_row is not None and token_w is not None:
+                    is_newline_step = _host_tokens_in_row == token_w
+            elif (
                 tokens_in_row is not None
                 and token_w is not None
                 and not this_peer_finished
@@ -559,14 +665,25 @@ class GenerationImageHead(GenerationMixin):
                     # 所有未结束样本当前行都已经生成了 token_w 个 code，则本 step 作为 newline
                     is_newline_step = (tokens_in_row[active_mask] == token_w).all()
 
+            if _runner is not None:
+                # piecewise CUDA-graph decode step: same values as self(**model_inputs)
+                _hidden = _runner.step(input_ids[:, -1:], model_kwargs.get('vision_tokens', None))
+                outputs = OmniStepOutput(vision_emb_for_infer=_hidden[:, -1, :])
+                model_kwargs.pop('images', None)
+                model_kwargs.pop('patch_nums', None)
+                model_kwargs.pop('images_grid', None)
+            else:
+                outputs = None
             # prepare model inputs
-            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs) if outputs is None else {}
 
             # Keep zero-based positions for each unpadded prompt. In CFG the
             # unconditional row is left-padded; using cache-wide arange positions
             # shifts its RoPE angles and changes BF16 sampling numerics.
             mask = model_kwargs.get("attention_mask")
-            if mask is not None:
+            if outputs is not None:
+                pass
+            elif mask is not None:
                 positions = mask.long().cumsum(-1) - 1
                 positions.masked_fill_(mask == 0, 1)
                 model_inputs["position_ids"] = positions[:, -model_inputs["input_ids"].shape[1]:].contiguous()
@@ -574,7 +691,8 @@ class GenerationImageHead(GenerationMixin):
                 model_inputs.pop("position_ids", None)
 
             # 这里应该放modeling里prepare_inputs_for_generation中，这里先外部处理
-            model_inputs['vision_tokens'] = model_kwargs.get('vision_tokens', None)
+            if outputs is None:
+              model_inputs['vision_tokens'] = model_kwargs.get('vision_tokens', None)
             # RAR needs the absolute raster step after KV-cache slicing removes
             # the original image-start and prior image-pad tokens.  Do not pass
             # this RAR-only kwarg to older/non-RAR checkpoints whose forward()
@@ -600,12 +718,10 @@ class GenerationImageHead(GenerationMixin):
                 model_inputs.pop('position_ids_3d', None)
 
             # forward（code / newline step 都要，newline 只是不用 image_head 产新 code）
-            sig = inspect.signature(self.forward)
-            has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
-            has_pos_3d = 'position_ids_3d' in sig.parameters
             if not (has_kwargs or has_pos_3d):
                 model_inputs.pop('position_ids_3d', None)
-            outputs = self(**model_inputs, return_dict=True)
+            if outputs is None:
+                outputs = self(**model_inputs, return_dict=True)
 
             # When the LLM forward sees only a non-image-pad token (e.g. an
             # <img_newline> consumed at step W in any-res mode), modeling's
@@ -624,14 +740,22 @@ class GenerationImageHead(GenerationMixin):
 
             # ====================== newline step：只插换行 token，不生成 code ======================
             if is_newline_step:
-                full_vision_token = torch.full(
-                    (batch_size, 1),
-                    IMAGE_PAD_TOKEN_ID,
-                    dtype=torch.long,
-                    device=input_ids.device,
-                )
-                active_mask = (unfinished_sequences != 0)
-                full_vision_token[active_mask, 0] = image_line_token_id
+                if _static_rows:
+                    full_vision_token = torch.full(
+                        (batch_size, 1),
+                        image_line_token_id,
+                        dtype=torch.long,
+                        device=input_ids.device,
+                    )
+                else:
+                    full_vision_token = torch.full(
+                        (batch_size, 1),
+                        IMAGE_PAD_TOKEN_ID,
+                        dtype=torch.long,
+                        device=input_ids.device,
+                    )
+                    active_mask = (unfinished_sequences != 0)
+                    full_vision_token[active_mask, 0] = image_line_token_id
 
                 # 把 newline token 接到 input_ids 里（给下一步当上下文）
                 input_ids = torch.cat([input_ids, full_vision_token], dim=-1)
@@ -644,7 +768,9 @@ class GenerationImageHead(GenerationMixin):
                 )
                 model_kwargs['vision_tokens'] = None
                 # 换行后，未结束样本的行内计数清零
-                if tokens_in_row is not None:
+                if _static_rows:
+                    _host_tokens_in_row = 0
+                elif tokens_in_row is not None:
                     tokens_in_row[active_mask] = 0
                 cur_len += 1
                 # 不更新 num_new_tokens，不改 unfinished_sequences
@@ -660,24 +786,6 @@ class GenerationImageHead(GenerationMixin):
             # `visual_tokens` MUST have shape (B*mms_unit, depth) to match.
             # When mms == 1, mms_unit == 1 so this is just (B, depth) as before.
             next_token_ids = torch.zeros(batch_size * _mms_unit, NUM_CODEBOOKS, dtype=torch.long, device=input_ids.device)
-            if num_new_tokens < 5 or num_new_tokens in (50, 100, 200):
-                _ve = outputs.vision_emb_for_infer
-                if isinstance(_ve, torch.Tensor):
-                    _v = _ve.detach().float()
-                    print(f"[DBG step={int(num_new_tokens)}] vision_emb shape={tuple(_v.shape)} "
-                          f"std={_v.std().item():.4f} first5={_v.flatten()[:5].tolist()}")
-                _mi = {k: (tuple(v.shape) if isinstance(v, torch.Tensor) else type(v).__name__)
-                       for k, v in model_inputs.items() if v is not None}
-                print(f"[DBG step={int(num_new_tokens)}] model_inputs: {_mi}")
-                _vt_in = model_inputs.get('vision_tokens', None)
-                if isinstance(_vt_in, torch.Tensor):
-                    print(f"[DBG step={int(num_new_tokens)}] vision_tokens IN (prev step's RVQ) "
-                          f"shape={tuple(_vt_in.shape)} values[batch0]={_vt_in[0].tolist()}")
-                _pi = model_inputs.get('position_ids', None)
-                _ii = model_inputs.get('input_ids', None)
-                if isinstance(_pi, torch.Tensor) and isinstance(_ii, torch.Tensor):
-                    print(f"[DBG step={int(num_new_tokens)}] input_ids[batch0]={_ii[0].tolist()} "
-                          f"position_ids[batch0]={_pi[0].tolist()}")
             # spatial_causal: spatial-major AR over the mms_unit positions. Each
             # (_s, i) step re-forwards image_head with the partially-filled
             # next_token_ids and writes back ONLY position _s's level i — the
@@ -690,14 +798,26 @@ class GenerationImageHead(GenerationMixin):
                 # handles CFG (cond/uncond row split + mirror) and logits_processor
                 # internally and returns the full (B*mms_unit, depth) next_token_ids,
                 # so the AR loop below is skipped (empty plan).
-                next_token_ids = self.image_head.sample(
-                    outputs.vision_emb_for_infer,
-                    self.model.visual_bridge_model.embedding_layers,
-                    cfg_scale=cfg_scale, mms_unit=_mms_unit, batch_size=batch_size,
-                    do_sample=do_sample, logits_processor=logits_processor,
-                    vision_sequences=vision_sequences, refine_gamma=refine_gamma,
-                    **({"image_cfg_scale": image_cfg_scale} if image_cfg_scale is not None else {}),
-                )
+                next_token_ids = None
+                if _head_graph_enabled() and _grouped_head and image_cfg_scale is None:
+                    _hg = getattr(self, "_gstar_head_graph", None)
+                    if _hg is None:
+                        _hg = self._gstar_head_graph = _HeadSampleGraph()
+                    next_token_ids = _hg.run(
+                        self.image_head, outputs.vision_emb_for_infer,
+                        self.model.visual_bridge_model.embedding_layers,
+                        logits_processor=logits_processor,
+                        cfg_scale=cfg_scale, mms_unit=_mms_unit, batch_size=batch_size,
+                        do_sample=do_sample, refine_gamma=refine_gamma)
+                if next_token_ids is None:
+                    next_token_ids = self.image_head.sample(
+                        outputs.vision_emb_for_infer,
+                        self.model.visual_bridge_model.embedding_layers,
+                        cfg_scale=cfg_scale, mms_unit=_mms_unit, batch_size=batch_size,
+                        do_sample=do_sample, logits_processor=logits_processor,
+                        vision_sequences=vision_sequences, refine_gamma=refine_gamma,
+                        **({"image_cfg_scale": image_cfg_scale} if image_cfg_scale is not None else {}),
+                    )
                 _iter_plan = []
             elif _spatial_causal and _mms_unit > 1:
                 _iter_plan = [(s, l) for s in range(_mms_unit) for l in range(NUM_CODEBOOKS)]
@@ -742,15 +862,6 @@ class GenerationImageHead(GenerationMixin):
                     next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
                 else:
                     next_tokens = torch.argmax(next_token_scores, dim=-1)
-                if i == 0 and (_s is None or _s == 0) and num_new_tokens in (0, 1, 2, 3, 50, 100, 200):
-                    _logits = next_token_logits.detach().float()
-                    _top = _logits.topk(5, dim=-1)
-                    print(f"[DBG head cb0] step={int(num_new_tokens)} batch={batch_size} mms_unit={_mms_unit} "
-                          f"raw_logits min={_logits.min().item():.3f} max={_logits.max().item():.3f} "
-                          f"std={_logits.std().item():.3f} | "
-                          f"top5_idx={_top.indices[0].tolist()} top5_val={[f'{v:.2f}' for v in _top.values[0].tolist()]} "
-                          f"sampled={next_tokens[0].item()}")
-
                 if cfg_scale != 1.0:
                     # next_tokens is (B*mms_unit/2,) — the cond half. Mirror it
                     # to fill uncond half so next_token_ids has full B*mms_unit.
@@ -800,8 +911,9 @@ class GenerationImageHead(GenerationMixin):
                 _eos_per_pos = (next_token_ids[:, 0] == VISION_END_TOKEN_ID[0]).view(batch_size, _mms_unit)
                 unfinished_vision_sequences = ~(_eos_per_pos.any(dim=1))
 
-            unfinished_sequences = unfinished_sequences & unfinished_vision_sequences
-            this_peer_finished = unfinished_sequences.max() == 0
+            if not _static_rows:
+                unfinished_sequences = unfinished_sequences & unfinished_vision_sequences
+                this_peer_finished = unfinished_sequences.max() == 0
 
             # code step：这里就是普通的视觉占位 PAD，不是 newline.
             # MTP note: each LM step still adds exactly ONE image_pad to
@@ -839,11 +951,26 @@ class GenerationImageHead(GenerationMixin):
             #
             # unfinished mask must broadcast across the mms_unit fan-out so that
             # finished samples zero out all mms_unit positions, not just one.
-            _unfinished_mtp = unfinished_sequences.long().repeat_interleave(_mms_unit, dim=0).unsqueeze(-1)
-            model_kwargs['vision_tokens'] = next_token_ids * _unfinished_mtp
+            if _static_rows:
+                # every row is unfinished: next_token_ids * 1 == next_token_ids
+                model_kwargs['vision_tokens'] = next_token_ids
+            else:
+                _unfinished_mtp = unfinished_sequences.long().repeat_interleave(_mms_unit, dim=0).unsqueeze(-1)
+                model_kwargs['vision_tokens'] = next_token_ids * _unfinished_mtp
+
+            if _use_runner and _runner is None and getattr(outputs, "past_key_values", None) is not None:
+                # after the eager prefill: hand its KV cache to the piecewise-graph decode runner
+                _m = model_kwargs["attention_mask"]
+                _pos = _m.long().cumsum(-1) - 1
+                _pos.masked_fill_(_m == 0, 1)
+                _runner = DecodeGraphRunner.for_generation(self, outputs.past_key_values, _m, max_length,
+                                                           _pos[:, -1:].contiguous())
+                model_kwargs["past_key_values"] = None
 
             # 一次 code step：未结束样本的当前行 code 数 +1
-            if tokens_in_row is not None and token_w is not None:
+            if _static_rows:
+                _host_tokens_in_row += 1
+            elif tokens_in_row is not None and token_w is not None:
                 active_mask = (unfinished_sequences != 0)
                 tokens_in_row[active_mask] += 1
 
@@ -871,10 +998,17 @@ class GenerationImageHead(GenerationMixin):
 
         #     vision_sequences = torch.cat(rows, dim=1)
 
-        vision_embeddings = []
-        for b_idx in range(batch_size):
-            vision_embeddings.append(self.model.visual_bridge_model(vision_sequences[b_idx]).unsqueeze(0))
-        vision_embeddings = torch.cat(vision_embeddings, dim=0)
+        self._gstar_skip_lm_head = _prev_skip_lm_head
+        # The t2i/c2i pipelines only consume vision_sequences; the bridge embeddings of
+        # the whole grid are dead work there (set GenerationImageHead.return_vision_embeddings
+        # to get them back).
+        if getattr(self, "return_vision_embeddings", False):
+            vision_embeddings = []
+            for b_idx in range(batch_size):
+                vision_embeddings.append(self.model.visual_bridge_model(vision_sequences[b_idx]).unsqueeze(0))
+            vision_embeddings = torch.cat(vision_embeddings, dim=0)
+        else:
+            vision_embeddings = None
         if streamer is not None:
             streamer.end()
 
