@@ -155,6 +155,7 @@ See the **[Installation & Usage guide](docs/installation-and-usage.md)** for dep
 | Generate images from text | [Text-to-image](docs/installation-and-usage.md#generate-an-image) |
 | Edit images with instructions | [Image editing](docs/installation-and-usage.md#edit-an-image) |
 | Choose an image head | [AR / DSpark heads](docs/installation-and-usage.md#image-heads) |
+| Faster inference (on by default) and its opt-outs | [Fast inference paths](docs/installation-and-usage.md#fast-inference-paths) |
 | Build training data | [Records, descriptors & manifests](docs/installation-and-usage.md#data) |
 | Pretrain and fine-tune | [Pretraining & SFT](docs/installation-and-usage.md#training) |
 | Run the checks | [Tests](docs/installation-and-usage.md#tests) |
