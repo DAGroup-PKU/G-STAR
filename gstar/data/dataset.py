@@ -8,11 +8,9 @@ import re
 from dataclasses import fields
 from pathlib import Path
 
-import numpy as np
-import torch
 from torch.utils.data import IterableDataset
 
-from .vendor.model.processor_omni import OmniProcessorOutput
+from ..vendor.model.processor_omni import OmniProcessorOutput
 
 LOG = logging.getLogger(__name__)
 
@@ -207,21 +205,3 @@ class PackedDataset(IterableDataset):
             if not self.packing or len(output.input_ids) == self.max_length:
                 yield padded(output, self.processor.tokenizer, self.max_length, lengths)
                 output, lengths = OmniProcessorOutput(input_ids=[], labels=[]), []
-
-
-def collate(items):
-    merged = OmniProcessorOutput()
-    for item in items:
-        merged = merged.concatenate(OmniProcessorOutput(**item))
-    result = {}
-    for key in ("input_ids", "labels", "position_ids", "seqlens"):
-        result[key] = torch.tensor([item[key] for item in items], dtype=torch.long)
-    if merged.images is not None:
-        result["images"] = [torch.from_numpy(np.asarray(x, dtype=np.float32)) for x in merged.images]
-    if merged.patch_nums is not None:
-        result["patch_nums"] = torch.tensor(merged.patch_nums, dtype=torch.long)
-    if merged.images_grid is not None:
-        result["images_grid"] = merged.images_grid
-    if merged.vision_tokens is not None:
-        result["vision_tokens"] = torch.from_numpy(np.concatenate(merged.vision_tokens).astype(np.int64))
-    return result
